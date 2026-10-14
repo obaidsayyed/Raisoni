@@ -364,6 +364,23 @@ export async function changeOwnPassword(
     throw new Error('Password must be at least 8 characters long.');
   }
 
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPass });
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ must_change_password: false, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+
+    if (profileError) {
+      console.warn('Failed to update must_change_password flag', profileError);
+    }
+    return;
+  }
+
   const profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
   const profile = profiles.find((p) => p.id === userId);
   if (!profile) throw new Error('User not found.');
@@ -397,6 +414,18 @@ export async function changeOwnUsername(userId: string, newUsername: string): Pr
   }
   if (!/^[a-zA-Z0-9_-]+$/.test(clean)) {
     throw new Error('Username can only contain letters, numbers, hyphens, and underscores.');
+  }
+
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase.rpc('change_username', { p_new_username: clean });
+    if (error) {
+      throw new Error(error.message);
+    }
+    if (data && !data.success) {
+      throw new Error(data.error || 'Failed to update username.');
+    }
+    return clean;
   }
 
   const profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
@@ -438,6 +467,11 @@ export async function changeOwnUsername(userId: string, newUsername: string): Pr
 // 3. FACULTY MANAGEMENT (Admin only)
 // --------------------------------------------------------------------------------
 export async function getFacultyProfiles(): Promise<Profile[]> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase.from('profiles').select('*').eq('role', 'faculty');
+    if (!error && data) return data as Profile[];
+  }
   const profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
   return profiles.filter((p) => p.role === 'faculty');
 }
@@ -453,6 +487,29 @@ export async function createFacultyAccount(
   }
   if (tempPassword.length < 8) {
     throw new Error('Temporary password must be at least 8 characters long.');
+  }
+
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    const response = await fetch(`${config.url}/functions/v1/admin-create-faculty`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        full_name: fullName.trim(),
+        username: cleanUsername,
+        temp_password: tempPassword,
+      }),
+    });
+    const resData = await response.json();
+    if (!response.ok) {
+      throw new Error(resData.error || 'Failed to create faculty account');
+    }
+    return resData.faculty;
   }
 
   const profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
@@ -495,6 +552,25 @@ export async function resetFacultyPassword(
     throw new Error('Temporary password must be at least 8 characters long.');
   }
 
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    const response = await fetch(`${config.url}/functions/v1/admin-reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ user_id: facultyId, temp_password: newTempPassword }),
+    });
+    const resData = await response.json();
+    if (!response.ok) {
+      throw new Error(resData.error || 'Failed to reset faculty password');
+    }
+    return;
+  }
+
   const profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
   const faculty = profiles.find((p) => p.id === facultyId);
   if (!faculty) throw new Error('Faculty member not found.');
@@ -518,6 +594,18 @@ export async function toggleFacultyStatus(
   facultyId: string,
   newStatus: 'active' | 'disabled'
 ): Promise<void> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', facultyId);
+    if (error) {
+      throw new Error(error.message);
+    }
+    return;
+  }
+
   const profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
   const faculty = profiles.find((p) => p.id === facultyId);
   if (!faculty) throw new Error('Faculty member not found.');
@@ -537,6 +625,11 @@ export async function toggleFacultyStatus(
 // 4. FLOORS & CLASSROOMS CRUD
 // --------------------------------------------------------------------------------
 export async function getFloors(): Promise<Floor[]> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase.from('floors').select('*').order('display_order');
+    if (!error && data && data.length > 0) return data as Floor[];
+  }
   const floors = getLocal<Floor[]>(KEYS.FLOORS, []);
   return floors.sort((a, b) => a.display_order - b.display_order);
 }
@@ -544,6 +637,18 @@ export async function getFloors(): Promise<Floor[]> {
 export async function createFloor(name: string, displayOrder: number): Promise<Floor> {
   const cleanName = name.trim();
   if (!cleanName) throw new Error('Floor name is required.');
+
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase
+      .from('floors')
+      .insert({ name: cleanName, display_order: displayOrder })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    broadcastChange('floors', 'INSERT', data);
+    return data as Floor;
+  }
 
   const floors = getLocal<Floor[]>(KEYS.FLOORS, []);
   if (floors.some((f) => f.name.toLowerCase() === cleanName.toLowerCase())) {
@@ -565,6 +670,19 @@ export async function createFloor(name: string, displayOrder: number): Promise<F
 
 export async function updateFloor(id: string, name: string, displayOrder: number): Promise<Floor> {
   const cleanName = name.trim();
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase
+      .from('floors')
+      .update({ name: cleanName, display_order: displayOrder, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    broadcastChange('floors', 'UPDATE', data);
+    return data as Floor;
+  }
+
   const floors = getLocal<Floor[]>(KEYS.FLOORS, []);
   const floor = floors.find((f) => f.id === id);
   if (!floor) throw new Error('Floor not found.');
@@ -586,6 +704,14 @@ export async function updateFloor(id: string, name: string, displayOrder: number
 }
 
 export async function deleteFloor(id: string): Promise<void> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { error } = await supabase.from('floors').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    broadcastChange('floors', 'DELETE', { id });
+    return;
+  }
+
   const classrooms = getLocal<Classroom[]>(KEYS.CLASSROOMS, []);
   if (classrooms.some((c) => c.floor_id === id)) {
     throw new Error('Cannot delete floor that still has assigned classrooms.');
@@ -598,6 +724,15 @@ export async function deleteFloor(id: string): Promise<void> {
 }
 
 export async function getClassrooms(): Promise<Classroom[]> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase
+      .from('classrooms')
+      .select('*, floor:floors(*)')
+      .order('room_number');
+    if (!error && data && data.length > 0) return data as Classroom[];
+  }
+
   const classrooms = getLocal<Classroom[]>(KEYS.CLASSROOMS, []);
   const floors = await getFloors();
   const floorMap = new Map(floors.map((f) => [f.id, f]));
@@ -617,6 +752,18 @@ export async function createClassroom(
 ): Promise<Classroom> {
   const cleanNumber = roomNumber.trim().toUpperCase();
   if (!cleanNumber) throw new Error('Room number is required.');
+
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase
+      .from('classrooms')
+      .insert({ room_number: cleanNumber, floor_id: floorId, capacity: capacity || 40, is_active: true })
+      .select('*, floor:floors(*)')
+      .single();
+    if (error) throw new Error(error.message);
+    broadcastChange('classrooms', 'INSERT', data);
+    return data as Classroom;
+  }
 
   const classrooms = getLocal<Classroom[]>(KEYS.CLASSROOMS, []);
   if (classrooms.some((c) => c.room_number.toUpperCase() === cleanNumber)) {
@@ -642,6 +789,19 @@ export async function updateClassroom(
   id: string,
   updates: Partial<Pick<Classroom, 'room_number' | 'floor_id' | 'capacity' | 'is_active'>>
 ): Promise<Classroom> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase
+      .from('classrooms')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*, floor:floors(*)')
+      .single();
+    if (error) throw new Error(error.message);
+    broadcastChange('classrooms', 'UPDATE', data);
+    return data as Classroom;
+  }
+
   const classrooms = getLocal<Classroom[]>(KEYS.CLASSROOMS, []);
   const room = classrooms.find((c) => c.id === id);
   if (!room) throw new Error('Classroom not found.');
@@ -665,6 +825,14 @@ export async function updateClassroom(
 }
 
 export async function deleteClassroom(id: string): Promise<void> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { error } = await supabase.from('classrooms').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    broadcastChange('classrooms', 'DELETE', { id });
+    return;
+  }
+
   const timetable = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
   const reservations = getLocal<Reservation[]>(KEYS.RESERVATIONS, []);
 
@@ -687,6 +855,16 @@ export async function deleteClassroom(id: string): Promise<void> {
 // 5. TIMETABLE MANAGEMENT & CONFLICT DETECTION
 // --------------------------------------------------------------------------------
 export async function getTimetableEvents(): Promise<TimetableEvent[]> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase
+      .from('timetable_events')
+      .select('*, classroom:classrooms(*, floor:floors(*))')
+      .order('day_of_week')
+      .order('start_time');
+    if (!error && data) return data as TimetableEvent[];
+  }
+
   const events = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
   const classrooms = await getClassrooms();
   const roomMap = new Map(classrooms.map((c) => [c.id, c]));
@@ -921,6 +1099,22 @@ export async function checkClassroomAvailability(
     return { available: false, reason: 'End time must be after start time.' };
   }
 
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    try {
+      const { data, error } = await supabase.rpc('check_classroom_availability', {
+        p_classroom_id: classroomId,
+        p_start: startDateTime,
+        p_end: endDateTime,
+      });
+      if (!error && data) {
+        return data as AvailabilityResult;
+      }
+    } catch (e) {
+      console.warn('Supabase check_classroom_availability failed, falling back to local calculation', e);
+    }
+  }
+
   const classrooms = getLocal<Classroom[]>(KEYS.CLASSROOMS, []);
   const room = classrooms.find((c) => c.id === classroomId);
 
@@ -1011,6 +1205,32 @@ export async function reserveClassroom(
   purpose: string,
   facultyId: string
 ): Promise<Reservation> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase.rpc('reserve_classroom', {
+      p_classroom_id: classroomId,
+      p_start: startDateTime,
+      p_end: endDateTime,
+      p_purpose: purpose,
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+    if (data && !data.success) {
+      throw new Error(data.error || 'Failed to complete reservation.');
+    }
+    broadcastChange('reservations', 'INSERT', data);
+    return {
+      id: data.reservation_id,
+      classroom_id: classroomId,
+      faculty_id: facultyId,
+      start_time: startDateTime,
+      end_time: endDateTime,
+      purpose,
+      status: 'confirmed',
+    };
+  }
+
   const profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
   const faculty = profiles.find((p) => p.id === facultyId);
 
@@ -1067,6 +1287,17 @@ export async function cancelReservation(
   callerUserId: string,
   isAdmin: boolean
 ): Promise<void> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { data, error } = await supabase.rpc('cancel_reservation', {
+      p_reservation_id: reservationId,
+    });
+    if (error) throw new Error(error.message);
+    if (data && !data.success) throw new Error(data.error || 'Failed to cancel reservation.');
+    broadcastChange('reservations', 'UPDATE', { id: reservationId, status: 'cancelled' });
+    return;
+  }
+
   const reservations = getLocal<Reservation[]>(KEYS.RESERVATIONS, []);
   const res = reservations.find((r) => r.id === reservationId);
 
@@ -1097,6 +1328,19 @@ export async function getReservations(filters?: {
   classroomId?: string;
   status?: 'confirmed' | 'cancelled';
 }): Promise<Reservation[]> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    let query = supabase
+      .from('reservations')
+      .select('*, classroom:classrooms(*, floor:floors(*)), faculty:profiles(id, username, full_name)')
+      .order('start_time', { ascending: false });
+    if (filters?.facultyId) query = query.eq('faculty_id', filters.facultyId);
+    if (filters?.classroomId) query = query.eq('classroom_id', filters.classroomId);
+    if (filters?.status) query = query.eq('status', filters.status);
+    const { data, error } = await query;
+    if (!error && data) return data as Reservation[];
+  }
+
   const reservations = getLocal<Reservation[]>(KEYS.RESERVATIONS, []);
   const classrooms = await getClassrooms();
   const profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
