@@ -1134,19 +1134,43 @@ export function parseTimeRange(timeStr: string): { start: string; end: string } 
   return { start: startParsed, end: endParsed };
 }
 
+/**
+ * Safely splits a CSV line into columns, preserving quoted values and supporting comma or semicolon delimiters.
+ */
+export function splitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  const delimiter = !line.includes(',') && line.includes(';') ? ';' : ',';
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === delimiter && !inQuotes) {
+      result.push(current.trim().replace(/^["']|["']$/g, ''));
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim().replace(/^["']|["']$/g, ''));
+  return result;
+}
+
 export function extractTopHeadingSection(lines: string[], headerIdx: number): string | null {
   for (let i = 0; i < headerIdx; i++) {
     const line = lines[i].trim();
     if (!line) continue;
 
     // Matches "Section: BCA A", "Class/Section - BCA B", "Section = BCA A"
-    const secMatch = line.match(/(?:section|sec|batch|class)\s*[:=-]\s*([^,;\n\r]+)/i);
+    const secMatch = line.match(/(?:section|sec|batch|class|division|div)\s*[:=-]\s*([^,;\n\r]+)/i);
     if (secMatch && secMatch[1].trim()) {
       return secMatch[1].trim();
     }
 
     // Matches standalone header cell like "BCA A", "BCA-A", "BCA 1st Year Sec A"
-    const firstCell = line.split(',')[0].trim();
+    const firstCell = splitCsvLine(line)[0]?.trim() || '';
     if (firstCell && !firstCell.toLowerCase().includes('day') && !firstCell.toLowerCase().includes('room')) {
       const cleaned = firstCell.replace(/^[#*-]\s*/, '').trim();
       if (cleaned.length >= 2 && cleaned.length <= 40) {
@@ -1395,11 +1419,17 @@ export async function parseAndValidateTimetableImport(
     throw new Error('Timetable file must contain a header row and at least one data row.');
   }
 
-  // 1. Locate the column header row (which contains "day" and ("room" or "subject" or "time"))
+  // 1. Locate the column header row (contains "day" or "weekday" along with "room" or "subject" or "time")
   let headerIdx = -1;
   for (let i = 0; i < lines.length; i++) {
     const lower = lines[i].toLowerCase();
-    if (lower.includes('day') && (lower.includes('room') || lower.includes('subject') || lower.includes('time') || lower.includes('floor'))) {
+    const hasDay = lower.includes('day') || lower.includes('weekday');
+    const hasRoom = lower.includes('room') || lower.includes('classroom') || lower.includes('hall');
+    const hasSubject = lower.includes('subject') || lower.includes('course');
+    const hasTime = lower.includes('time') || lower.includes('slot') || lower.includes('timing');
+    const hasFloor = lower.includes('floor') || lower.includes('level');
+
+    if (hasDay && (hasRoom || hasSubject || hasTime || hasFloor)) {
       headerIdx = i;
       break;
     }
@@ -1413,23 +1443,61 @@ export async function parseAndValidateTimetableImport(
   // 2. Extract section heading if specified at the top of the file before headers
   const topSection = extractTopHeadingSection(lines, headerIdx) || undefined;
 
-  const header = lines[headerIdx].toLowerCase().split(',').map((h) => h.trim());
-  const dayIdx = header.findIndex((h) => h.includes('day'));
+  const header = splitCsvLine(lines[headerIdx]).map((h) => h.toLowerCase().trim());
+
+  // Dynamic column resolution: Column order in the CSV does NOT matter
+  const dayIdx = header.findIndex((h) => h.includes('day') || h.includes('weekday'));
   const timeIdx = header.findIndex(
-    (h) => h === 'time' || h === 'timeslot' || h.includes('time slot') || h === 'slot' || (h.includes('time') && !h.includes('start') && !h.includes('end'))
+    (h) =>
+      h === 'time' ||
+      h === 'timeslot' ||
+      h.includes('time slot') ||
+      h.includes('time-slot') ||
+      h === 'slot' ||
+      h.includes('timing') ||
+      h.includes('interval') ||
+      h.includes('hours') ||
+      (h.includes('time') && !h.includes('start') && !h.includes('end'))
   );
   const startIdx = header.findIndex((h) => h.includes('start'));
   const endIdx = header.findIndex((h) => h.includes('end'));
-  const roomIdx = header.findIndex((h) => h.includes('room') || h.includes('classroom'));
-  const floorIdx = header.findIndex((h) => h.includes('floor') || h.includes('level'));
-  const subjectIdx = header.findIndex((h) => h.includes('subject') || h.includes('course'));
-  const facultyIdx = header.findIndex((h) => h.includes('faculty') || h.includes('teacher') || h.includes('prof') || h.includes('instructor'));
-  const sectionIdx = header.findIndex((h) => h === 'section' || h === 'sec' || h.includes('section') || h === 'class');
-  const semesterIdx = header.findIndex((h) => h.includes('semester') || h.includes('term'));
+  const roomIdx = header.findIndex(
+    (h) => h.includes('room') || h.includes('classroom') || h.includes('hall')
+  );
+  const floorIdx = header.findIndex((h) => h.includes('floor') || h.includes('level') || h.includes('storey'));
+  const subjectIdx = header.findIndex(
+    (h) => h.includes('subject') || h.includes('course') || h.includes('paper') || h.includes('module') || h.includes('topic')
+  );
+  const facultyIdx = header.findIndex(
+    (h) =>
+      h.includes('faculty') ||
+      h.includes('teacher') ||
+      h.includes('prof') ||
+      h.includes('instructor') ||
+      h.includes('lecturer') ||
+      h.includes('staff')
+  );
+  const sectionIdx = header.findIndex(
+    (h) =>
+      h === 'section' ||
+      h === 'sec' ||
+      h.includes('section') ||
+      h === 'class' ||
+      h.includes('division') ||
+      h.includes('div') ||
+      h.includes('batch')
+  );
+  const semesterIdx = header.findIndex((h) => h.includes('semester') || h.includes('term') || h.includes('sem'));
 
   if (dayIdx === -1 || roomIdx === -1 || subjectIdx === -1 || facultyIdx === -1 || (timeIdx === -1 && (startIdx === -1 || endIdx === -1))) {
+    const missing: string[] = [];
+    if (dayIdx === -1) missing.push('Day (e.g. Mon-Sat)');
+    if (timeIdx === -1 && (startIdx === -1 || endIdx === -1)) missing.push('Time (e.g. 09:00 AM - 10:30 AM)');
+    if (roomIdx === -1) missing.push('Room (e.g. 101, 202)');
+    if (subjectIdx === -1) missing.push('Subject');
+    if (facultyIdx === -1) missing.push('Faculty');
     throw new Error(
-      'Missing required columns. Expected header: Day (Mon-Sat), Time (e.g. 09:00 AM - 10:30 AM), Room, Floor, Subject, Faculty (and optional Section)'
+      `Missing required column(s): ${missing.join(', ')}. Note: Column order in your CSV does not matter, but all required columns must be present.`
     );
   }
 
@@ -1442,7 +1510,7 @@ export async function parseAndValidateTimetableImport(
   let errorCount = 0;
 
   for (let i = headerIdx + 1; i < lines.length; i++) {
-    const cols = lines[i].split(',').map((c) => c.trim());
+    const cols = splitCsvLine(lines[i]);
     if (cols.length < 3 || cols.every((c) => !c)) continue;
 
     const dayRaw = cols[dayIdx] || '';

@@ -93,6 +93,8 @@ Saturday,02:00 PM - 03:30 PM,302,Third Floor,Web Development Lab,Prof. Verma
    - Room-number prefix digit floor assumptions (e.g., `2xx -> 2nd Floor`) have been completely removed.
 5. **Conflict Prevention:**
    - The import preview validates room existence, time formats, and automatically identifies conflicts with active faculty reservations before committing.
+6. **Column Order Independence:**
+   - **The order of columns does NOT matter.** The importer dynamically identifies each column by its header name (e.g., `Room, Floor, Day, Time, Subject, Faculty` or `Faculty, Subject, Time, Room, Floor, Day, Section`). Common aliases (such as `Room No`, `Classroom`, `Timing`, `Slot`, `Teacher`, `Course`, `Division`, `Batch`) are recognized automatically.
 
 ---
 
