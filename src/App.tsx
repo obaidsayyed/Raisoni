@@ -13,6 +13,18 @@ import { AdminAnalyticsView } from './pages/AdminAnalyticsView';
 import { AccountSecurityView } from './pages/AccountSecurityView';
 import { LoginModal } from './components/LoginModal';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
+import { PanelLeftOpen } from 'lucide-react';
+
+const TAB_TITLES: Record<string, string> = {
+  classrooms: 'Room Availability',
+  timetable: 'Official Timetable',
+  'my-reservations': 'My Schedules',
+  'all-reservations': 'All Reservations',
+  'manage-rooms': 'Floors & Classrooms',
+  'manage-faculty': 'Faculty Accounts',
+  analytics: 'Admin Analytics',
+  security: 'Account Security',
+};
 
 const AppContent: React.FC = () => {
   const { role, mustChangePassword, loading } = useAuth();
@@ -72,6 +84,22 @@ const AppContent: React.FC = () => {
         onSelectTab={(tab) => setCurrentTab(tab)}
         onOpenLoginModal={() => setShowLoginModal(true)}
       />
+
+      {/* Mobile Top Subbar: Stable navigation trigger below top bar for Admin, Faculty, and Reader */}
+      <div className="mobile-top-subbar">
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="mobile-sidebar-toggle-btn"
+          title="Open Navigation Menu"
+          aria-label="Open Navigation Menu"
+        >
+          <PanelLeftOpen size={18} />
+        </button>
+        <span className="mobile-subbar-title">
+          {TAB_TITLES[currentTab] || 'Room Allocator'}
+        </span>
+      </div>
 
       {/* Main Container with Collapsible Sidebar */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>

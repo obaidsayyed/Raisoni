@@ -9,8 +9,8 @@ import {
   Users,
   BarChart3,
   KeyRound,
-  PanelLeftClose,
   PanelLeftOpen,
+  X,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -98,20 +98,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Floating Button to Expand Options when Totally Collapsed on Mobile */}
-      {collapsed && (
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="mobile-sidebar-open-btn"
-          title="Open Navigation Options"
-          aria-label="Open Navigation Options"
-        >
-          <PanelLeftOpen size={15} />
-          <span>Options</span>
-        </button>
-      )}
-
       {/* Backdrop overlay on mobile when expanded */}
       {!collapsed && (
         <div
@@ -147,14 +133,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!collapsed && (
             <span
               style={{
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: 800,
                 textTransform: 'uppercase',
                 letterSpacing: '0.8px',
-                color: 'var(--color-text-muted)',
+                color: 'var(--color-primary-dark)',
               }}
             >
-              Options
+              Navigation Menu
             </span>
           )}
           <button
@@ -168,10 +154,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
             }}
-            title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-            aria-label={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            title={collapsed ? 'Expand Sidebar' : 'Close Menu'}
+            aria-label={collapsed ? 'Expand Sidebar' : 'Close Menu'}
           >
-            {collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+            {collapsed ? <PanelLeftOpen size={17} /> : <X size={18} />}
           </button>
         </div>
 
