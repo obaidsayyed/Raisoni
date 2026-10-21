@@ -1,30 +1,68 @@
 /* ==========================================================================
    COLLEGE CLASSROOM ALLOCATOR DESIGN SYSTEM
-   STRICT TWO-COLOR PALETTE:
-   - Pure White: #FFFFFF
-   - Solid Purple: #5B21B6
-   NO GRADIENTS | NO NEON COLORS | NO MULTICOLORS | NO EXTRA ACCENTS
+   PRIMARY: PURE WHITE (#FFFFFF / #FAFAFC)
+   PALETTE: PURPLE TINTS & SHADES
+   - Deep Plum / Aubergine: #3B0B3A (High-contrast primary dark shade)
+   - Medium Orchid Accent:  #D480C4 (Fresh, elegant mid-tone accent)
+   - Soft Lilac Tint:       #F6EBF6 (Delicate pastel purple mist)
+   - Pure White:            #FFFFFF (Clean minimal base & card surfaces)
+   STRICTLY NO ANIMATIONS
    ========================================================================== */
 
 :root {
+  /* Surface & Background */
   --color-white: #ffffff;
-  --color-purple: #5b21b6;
-  
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-  --border-width: 1.5px;
-  --border-radius: 6px;
-  --transition: all 0.15s ease-in-out;
+  --color-bg: #faf9fb;
+  --color-surface: #ffffff;
+
+  /* Tint: Softest Lilac/Lavender Mist (Tier 2) */
+  --color-tint-soft: #f6ebf6;
+  --color-tint-subtle: #fcf8fc;
+  --color-tint-border: #ebd8eb;
+  --color-tint-border-subtle: #f4e8f4;
+
+  /* Accent: Medium Orchid / Mauve (Tier 3) */
+  --color-accent: #d480c4;
+  --color-accent-hover: #c46fb4;
+  --color-accent-border: #d480c4;
+
+  /* Shade: Deep Aubergine / Royal Plum (Tier 4) */
+  --color-primary-dark: #3b0b3a;
+  --color-primary-hover: #4e114d;
+  --color-purple: #3b0b3a; /* Fallback for legacy var(--color-purple) */
+
+  /* Text Hierarchy */
+  --color-text-main: #3b0b3a;
+  --color-text-muted: #6b466a;
+  --color-text-light: #947293;
+  --color-text-on-dark: #ffffff;
+
+  /* Borders & Radii */
+  --border-radius-sm: 6px;
+  --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --border-subtle: 1px solid var(--color-tint-border);
+
+  /* Minimalist Shadows */
+  --shadow-sm: 0 1px 3px rgba(59, 11, 58, 0.04);
+  --shadow-md: 0 4px 14px rgba(59, 11, 58, 0.06);
+  --shadow-modal: 0 20px 40px rgba(59, 11, 58, 0.16);
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* Strictly no animations anywhere */
+  transition: none !important;
+  animation: none !important;
 }
 
 body {
-  background-color: var(--color-white);
-  color: var(--color-purple);
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
   font-family: var(--font-family);
   font-size: 15px;
   line-height: 1.5;
@@ -33,7 +71,7 @@ body {
 }
 
 a {
-  color: var(--color-purple);
+  color: var(--color-primary-dark);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -44,25 +82,25 @@ button {
   font-weight: 600;
   cursor: pointer;
   border-radius: var(--border-radius);
-  transition: var(--transition);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 16px;
-  line-height: 1;
+  padding: 8px 16px;
+  line-height: 1.2;
 }
 
-/* Primary Button: Solid Purple with White Text */
+/* Primary Button: Deep Plum with White Text */
 .btn-primary {
-  background-color: var(--color-purple);
+  background-color: var(--color-primary-dark);
   color: var(--color-white);
-  border: var(--border-width) solid var(--color-purple);
+  border: 1px solid var(--color-primary-dark);
+  box-shadow: 0 1px 2px rgba(59, 11, 58, 0.08);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--color-white);
-  color: var(--color-purple);
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
 .btn-primary:disabled {
@@ -70,16 +108,17 @@ button {
   cursor: not-allowed;
 }
 
-/* Secondary Button: Outlined Purple with White Background */
+/* Secondary Button: Clean White with Soft Border */
 .btn-secondary {
   background-color: var(--color-white);
-  color: var(--color-purple);
-  border: var(--border-width) solid var(--color-purple);
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-tint-border);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: var(--color-purple);
-  color: var(--color-white);
+  background-color: var(--color-tint-soft);
+  border-color: var(--color-accent);
 }
 
 .btn-secondary:disabled {
@@ -90,66 +129,68 @@ button {
 /* Subtle Link Button */
 .btn-link {
   background: transparent;
-  color: var(--color-purple);
+  color: var(--color-primary-dark);
   border: none;
-  padding: 6px 10px;
+  padding: 4px 8px;
   text-decoration: underline;
+  font-weight: 600;
 }
 
 .btn-link:hover {
-  opacity: 0.8;
+  color: var(--color-accent);
 }
 
 /* Form Controls */
 input, select, textarea {
   font-family: inherit;
   font-size: 14px;
-  color: var(--color-purple);
+  color: var(--color-text-main);
   background-color: var(--color-white);
-  border: var(--border-width) solid var(--color-purple);
+  border: 1px solid var(--color-tint-border);
   border-radius: var(--border-radius);
-  padding: 9px 12px;
+  padding: 10px 14px;
   width: 100%;
   outline: none;
-  transition: var(--transition);
 }
 
 input:focus, select:focus, textarea:focus {
-  border-width: 2.5px;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(212, 128, 196, 0.2);
 }
 
 input::placeholder, textarea::placeholder {
-  color: var(--color-purple);
-  opacity: 0.6;
+  color: var(--color-text-light);
+  opacity: 0.7;
 }
 
 label {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   margin-bottom: 6px;
-  color: var(--color-purple);
+  color: var(--color-text-muted);
 }
 
 /* Cards & Containers */
 .card {
-  background-color: var(--color-white);
-  border: var(--border-width) solid var(--color-purple);
-  border-radius: var(--border-radius);
-  padding: 20px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-tint-border);
+  border-radius: var(--border-radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
 }
 
 /* Badges */
 .badge-solid {
-  background-color: var(--color-purple);
+  background-color: var(--color-primary-dark);
   color: var(--color-white);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.6px;
-  padding: 4px 8px;
-  border-radius: 4px;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 9999px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -157,82 +198,80 @@ label {
 }
 
 .badge-outline {
-  background-color: var(--color-white);
-  color: var(--color-purple);
-  border: 1px solid var(--color-purple);
+  background-color: var(--color-tint-soft);
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-accent);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.6px;
-  padding: 3px 7px;
-  border-radius: 4px;
+  letter-spacing: 0.5px;
+  padding: 3px 9px;
+  border-radius: 9999px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   text-transform: uppercase;
 }
 
-/* Room State Visual Styling strictly using White and Purple */
+/* Room State Visual Styling */
 .room-card {
-  border: 2px solid var(--color-purple);
-  border-radius: var(--border-radius);
-  padding: 16px;
-  background-color: var(--color-white);
+  border: 1px solid var(--color-tint-border);
+  border-radius: var(--border-radius-lg);
+  padding: 20px;
+  background-color: var(--color-surface);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 200px;
+  min-height: 220px;
   position: relative;
-  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .room-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 0 var(--color-purple);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
 }
 
-/* Available state: Clean white background with purple text and solid outline */
+/* Available state: Clean crisp white with subtle orchid accent */
 .room-card.state-available {
-  border-style: solid;
-  border-width: 2px;
+  border: 1px solid var(--color-tint-border);
 }
 
-/* Occupied by Official Lecture: Solid Purple box with Pure White text */
+/* Occupied by Official Lecture: Sophisticated Deep Plum Card with Crisp White Text */
 .room-card.state-occupied {
-  background-color: var(--color-purple);
+  background-color: var(--color-primary-dark);
   color: var(--color-white);
-  border: 2px solid var(--color-purple);
+  border: 1px solid var(--color-primary-dark);
 }
 
 .room-card.state-occupied .badge-solid {
-  background-color: var(--color-white);
-  color: var(--color-purple);
+  background-color: var(--color-tint-soft);
+  color: var(--color-primary-dark);
 }
 
 .room-card.state-occupied .room-meta {
-  color: var(--color-white);
+  color: var(--color-tint-soft);
   opacity: 0.9;
 }
 
-/* Reserved by Faculty: White background with dashed heavy purple border */
+/* Reserved by Faculty: Soft lilac tint card with orchid border */
 .room-card.state-reserved {
-  border-style: dashed;
-  border-width: 2px;
-  background-color: var(--color-white);
+  border: 1.5px solid var(--color-accent);
+  background-color: var(--color-tint-subtle);
 }
 
-/* Inactive room: Dotted border with faint opacity */
+/* Inactive room: Soft dashed border */
 .room-card.state-inactive {
-  border-style: dotted;
-  border-width: 2px;
-  opacity: 0.6;
+  border: 1px dashed var(--color-tint-border);
+  background-color: #faf9fb;
+  opacity: 0.7;
 }
 
 /* Modal Overlay & Dialog */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(2px);
+  background-color: rgba(59, 11, 58, 0.4);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -241,21 +280,21 @@ label {
 }
 
 .modal-content {
-  background-color: var(--color-white);
-  border: 3px solid var(--color-purple);
-  border-radius: var(--border-radius);
-  max-width: 580px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-tint-border);
+  border-radius: var(--border-radius-lg);
+  max-width: 540px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
   padding: 28px;
   position: relative;
-  box-shadow: 8px 8px 0px var(--color-purple);
+  box-shadow: var(--shadow-modal);
 }
 
-/* Alerts / Banners strictly using White and Purple */
+/* Alerts / Banners */
 .alert-box {
-  border: 2px solid var(--color-purple);
+  border: 1px solid var(--color-tint-border);
   padding: 14px 18px;
   border-radius: var(--border-radius);
   margin-bottom: 20px;
@@ -265,42 +304,56 @@ label {
 }
 
 .alert-solid {
-  background-color: var(--color-purple);
+  background-color: var(--color-primary-dark);
   color: var(--color-white);
+  border-color: var(--color-primary-dark);
 }
 
 .alert-outline {
-  background-color: var(--color-white);
-  color: var(--color-purple);
+  background-color: var(--color-tint-soft);
+  color: var(--color-primary-dark);
+  border-color: var(--color-accent);
 }
 
 /* Table styles */
 .allocator-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 14px;
+  border: 1px solid var(--color-tint-border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
 }
 
 .allocator-table th {
-  background-color: var(--color-purple);
-  color: var(--color-white);
+  background-color: var(--color-tint-soft);
+  color: var(--color-primary-dark);
   text-align: left;
-  padding: 10px 14px;
+  padding: 12px 16px;
   font-weight: 700;
-  border: 1px solid var(--color-purple);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border-bottom: 1.5px solid var(--color-tint-border);
 }
 
 .allocator-table td {
-  padding: 10px 14px;
-  border: 1px solid var(--color-purple);
-  background-color: var(--color-white);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-tint-border-subtle);
+  background-color: var(--color-surface);
+  color: var(--color-text-main);
+}
+
+.allocator-table tr:last-child td {
+  border-bottom: none;
 }
 
 .allocator-table tr:hover td {
-  background-color: rgba(91, 33, 182, 0.05);
+  background-color: var(--color-tint-subtle);
 }
 
-/* Utility Helpers */
+/* Utility Helpers & Responsive Grid Containers */
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
 .items-center { align-items: center; }
@@ -313,3 +366,559 @@ label {
 .text-center { text-align: center; }
 .font-bold { font-weight: 700; }
 .uppercase { text-transform: uppercase; }
+
+/* Responsive Page Containers */
+.page-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  width: 100%;
+}
+
+/* Responsive Table Wrapper */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 12px;
+}
+
+/* Responsive Two-Column and Three-Column Grids */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+/* Form Helper & Constraint Text */
+.form-helper {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+/* Sidebar Responsive Styles */
+.sidebar-overlay {
+  display: none;
+}
+
+.mobile-sidebar-open-btn {
+  display: none;
+}
+
+/* Mobile Media Queries: Screens up to 768px (Tablets & Phones) */
+@media (max-width: 768px) {
+  body {
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+
+  /* Sidebar Totally Collapsed on Mobile to maximize main content space */
+  .app-sidebar.sidebar-collapsed {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+  }
+
+  /* Dedicated Mobile Trigger Button to open Options Sidebar Drawer */
+  .mobile-sidebar-open-btn {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    position: fixed;
+    top: 48px;
+    left: 6px;
+    z-index: 900;
+    background-color: var(--color-white);
+    color: var(--color-primary-dark);
+    border: 1.5px solid var(--color-accent);
+    border-radius: var(--border-radius-sm);
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 6px rgba(59, 11, 58, 0.12);
+    cursor: pointer;
+    height: 25px !important;
+    min-height: 25px !important;
+  }
+
+  .mobile-sidebar-open-btn:active {
+    background-color: var(--color-tint-soft);
+  }
+
+  /* Fixed Drawer when expanded on mobile */
+  .mobile-sidebar-expanded {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1050 !important;
+    width: 220px !important;
+    max-width: 75vw !important;
+    box-shadow: var(--shadow-modal) !important;
+    display: flex !important;
+  }
+
+  .mobile-sidebar-expanded nav {
+    padding: 6px 4px !important;
+    gap: 2px !important;
+  }
+
+  .mobile-sidebar-expanded nav button {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  .mobile-sidebar-expanded nav button svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .sidebar-backdrop {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(59, 11, 58, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 1040;
+  }
+
+  /* Page Container: Full screen width for main content, clearance for top button */
+  .page-container {
+    padding: 34px 8px 12px 8px !important;
+    max-width: 100% !important;
+  }
+
+  .page-container > div:first-child {
+    margin-bottom: 8px !important;
+  }
+
+  /* Headings Downsized for Mobile Screens across ALL sections */
+  h1 {
+    font-size: 15px !important;
+    line-height: 1.25 !important;
+    letter-spacing: 0.2px !important;
+    margin-bottom: 2px !important;
+  }
+
+  h2 {
+    font-size: 13.5px !important;
+    line-height: 1.25 !important;
+    margin-bottom: 6px !important;
+  }
+
+  h3 {
+    font-size: 12.5px !important;
+    line-height: 1.25 !important;
+    margin-bottom: 4px !important;
+  }
+
+  .page-container > div:first-child p {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    margin-top: 2px !important;
+    opacity: 0.85 !important;
+  }
+
+  /* Universal Buttons Downsized across ALL views */
+  button, .btn-primary, .btn-secondary {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+    gap: 4px !important;
+    border-radius: var(--border-radius-sm) !important;
+    line-height: 1.2 !important;
+    height: 28px !important;
+    min-height: 28px !important;
+  }
+
+  .btn-link {
+    font-size: 10.5px !important;
+    padding: 1px 3px !important;
+  }
+
+  /* Badges Downsized across ALL views */
+  .badge-solid, .badge-outline {
+    font-size: 9px !important;
+    padding: 1.5px 5px !important;
+    letter-spacing: 0.2px !important;
+    gap: 3px !important;
+  }
+
+  .badge-solid svg, .badge-outline svg {
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  /* Cards Downsized across ALL sections */
+  .card {
+    padding: 9px 11px !important;
+    border-radius: var(--border-radius-sm) !important;
+    margin-bottom: 10px !important;
+  }
+
+  /* Room Cards Grid & Card Downsized */
+  .room-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .room-card {
+    padding: 9px 11px !important;
+    min-height: auto !important;
+    border-radius: var(--border-radius-sm) !important;
+  }
+
+  .room-card-number,
+  .room-card h3 {
+    font-size: 15px !important;
+  }
+
+  .room-card span {
+    font-size: 9.5px !important;
+  }
+
+  .room-card-body {
+    margin: 6px 0 !important;
+    font-size: 11px !important;
+  }
+
+  .room-card-body > div {
+    padding: 6px 8px !important;
+  }
+
+  .room-card button {
+    height: 28px !important;
+    min-height: 28px !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+  }
+
+  /* Reservation Cards in My Schedules */
+  .reservation-card {
+    padding: 9px 11px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .reservation-card-room {
+    font-size: 15px !important;
+  }
+
+  .reservation-card span,
+  .reservation-card div {
+    font-size: 11px !important;
+  }
+
+  .reservation-card button {
+    padding: 3px 8px !important;
+    font-size: 10px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+  }
+
+  /* Form Inputs & Controls across ALL sections */
+  input, select, textarea {
+    font-size: 16px !important;
+    padding: 5px 8px !important;
+    border-radius: var(--border-radius-sm) !important;
+    height: 32px !important;
+  }
+
+  textarea {
+    height: auto !important;
+    min-height: 60px !important;
+  }
+
+  label {
+    font-size: 10px !important;
+    margin-bottom: 2px !important;
+    letter-spacing: 0.3px !important;
+  }
+
+  .form-helper {
+    font-size: 9px !important;
+    margin-top: 1px !important;
+  }
+
+  form > div,
+  .card form > div {
+    margin-bottom: 8px !important;
+  }
+
+  /* Grid Layouts Collapse on Mobile across ALL views */
+  .grid-2,
+  .grid-3,
+  .responsive-split-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .responsive-split-grid .card {
+    margin-bottom: 8px !important;
+  }
+
+  /* Room Filter Grid: Compact 2-column layout */
+  .room-filter-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+
+  .room-filter-grid > div:first-child,
+  .room-filter-grid > div:nth-child(4),
+  .room-filter-grid > div:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+
+  .quick-intervals-wrap {
+    margin-top: 6px !important;
+    padding-top: 6px !important;
+    gap: 4px !important;
+  }
+
+  .quick-intervals-wrap button {
+    padding: 2px 6px !important;
+    font-size: 9.5px !important;
+    height: 23px !important;
+    min-height: 23px !important;
+  }
+
+  /* Timetable & All Reservations Filters */
+  .timetable-filter-card {
+    padding: 8px 10px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .timetable-filter-row {
+    gap: 8px !important;
+  }
+
+  .timetable-filter-row select {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .all-reservations-filter-grid {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .analytics-filter-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+
+  /* Analytics KPI Cards on Mobile: 2 columns */
+  .analytics-kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .kpi-card {
+    padding: 7px 9px !important;
+  }
+
+  .kpi-value {
+    font-size: 16px !important;
+    margin-top: 2px !important;
+  }
+
+  .analytics-kpi-grid div:first-child {
+    font-size: 9.5px !important;
+  }
+
+  .analytics-kpi-grid div:last-child {
+    font-size: 8.5px !important;
+  }
+
+  /* Tables Downsized across Timetable, Rooms, Faculty, Reservations, Analytics */
+  .allocator-table th {
+    padding: 5px 6px !important;
+    font-size: 9.5px !important;
+    letter-spacing: 0.3px !important;
+  }
+
+  .allocator-table td {
+    padding: 5px 6px !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+  }
+
+  .allocator-table td button {
+    padding: 2px 5px !important;
+    font-size: 9.5px !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    gap: 3px !important;
+  }
+
+  .allocator-table td svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  /* Alert Box on Mobile across ALL views */
+  .alert-box {
+    padding: 6px 9px !important;
+    gap: 6px !important;
+    font-size: 11px !important;
+    margin-bottom: 8px !important;
+    border-radius: var(--border-radius-sm) !important;
+  }
+
+  .alert-box svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  /* Modal Content Mobile Downsized */
+  .modal-overlay {
+    padding: 6px !important;
+  }
+
+  .modal-content {
+    padding: 12px 14px !important;
+    max-width: 96vw !important;
+    max-height: 94vh !important;
+    border-radius: var(--border-radius-sm) !important;
+  }
+
+  .modal-content h2,
+  .modal-content h3 {
+    font-size: 13.5px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .modal-content div[style*="marginBottom: 20px"],
+  .modal-content div[style*="marginBottom: 16px"] {
+    margin-bottom: 8px !important;
+  }
+
+  .modal-content div[style*="padding: 16px"] {
+    padding: 8px 10px !important;
+  }
+
+  /* Header Bar on Mobile */
+  .app-header-bar {
+    padding: 6px 10px !important;
+    gap: 6px !important;
+  }
+
+  .app-header-brand-icon {
+    padding: 5px !important;
+    border-radius: 6px !important;
+  }
+
+  .app-header-brand-icon svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  .app-header-brand-title {
+    font-size: 12px !important;
+    letter-spacing: 0.2px !important;
+  }
+
+  .app-header-brand-sub {
+    font-size: 8px !important;
+  }
+
+  .app-header-user-status {
+    gap: 5px !important;
+  }
+
+  .app-header-user-status .badge-outline {
+    font-size: 8.5px !important;
+    padding: 1.5px 5px !important;
+  }
+
+  .app-header-user-status button {
+    padding: 3px 8px !important;
+    font-size: 10px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+  }
+
+  /* Toasts on Mobile */
+  .toast-container {
+    top: 8px !important;
+    right: 8px !important;
+    left: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .toast-item {
+    padding: 6px 8px !important;
+    font-size: 10.5px !important;
+  }
+
+  footer {
+    padding: 10px !important;
+    font-size: 10px !important;
+  }
+}
+
+/* Extra Small Mobile (Screens up to 480px) */
+@media (max-width: 480px) {
+  .page-container {
+    padding: 32px 6px 10px 6px !important;
+  }
+
+  .card {
+    padding: 8px 10px !important;
+  }
+
+  .room-card {
+    padding: 8px 9px !important;
+  }
+
+  .room-card-number,
+  .room-card h3 {
+    font-size: 14px !important;
+  }
+
+  button, .btn-primary, .btn-secondary {
+    padding: 3px 8px !important;
+    font-size: 10.5px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+  }
+
+  h1 {
+    font-size: 14px !important;
+  }
+
+  h2 {
+    font-size: 12.5px !important;
+  }
+
+  h3 {
+    font-size: 11.5px !important;
+  }
+
+  .analytics-kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px !important;
+  }
+
+  .kpi-value {
+    font-size: 15px !important;
+  }
+}
+

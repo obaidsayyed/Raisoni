@@ -36,9 +36,15 @@ export const RoomFilterBar: React.FC<RoomFilterBarProps> = ({
   onChangeAvailabilityFilter,
   stats,
 }) => {
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
   return (
     <div className="card" style={{ marginBottom: '24px' }}>
       <div
+        className="room-filter-grid"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -50,12 +56,14 @@ export const RoomFilterBar: React.FC<RoomFilterBarProps> = ({
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Calendar size={14} />
-            Reservation Date
+            Reservation Date *
           </label>
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => onChangeDate(e.target.value)}
+            required
+            min={todayStr}
           />
         </div>
 
@@ -63,12 +71,13 @@ export const RoomFilterBar: React.FC<RoomFilterBarProps> = ({
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Clock size={14} />
-            Start Time
+            Start Time *
           </label>
           <input
             type="time"
             value={startTime}
             onChange={(e) => onChangeStartTime(e.target.value)}
+            required
           />
         </div>
 
@@ -76,12 +85,13 @@ export const RoomFilterBar: React.FC<RoomFilterBarProps> = ({
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Clock size={14} />
-            End Time
+            End Time *
           </label>
           <input
             type="time"
             value={endTime}
             onChange={(e) => onChangeEndTime(e.target.value)}
+            required
           />
         </div>
 
@@ -131,7 +141,7 @@ export const RoomFilterBar: React.FC<RoomFilterBarProps> = ({
         style={{
           marginTop: '16px',
           paddingTop: '14px',
-          borderTop: '1px solid var(--color-purple)',
+          borderTop: '1px solid var(--color-tint-border)',
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',

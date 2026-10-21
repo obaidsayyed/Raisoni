@@ -62,7 +62,7 @@ export const AdminAnalyticsView: React.FC = () => {
   }, [loadData]);
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="page-container">
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '0.5px' }}>
           ADMINISTRATIVE USAGE & HISTORICAL ANALYTICS
@@ -74,7 +74,7 @@ export const AdminAnalyticsView: React.FC = () => {
 
       {/* Filter Section */}
       <div className="card" style={{ marginBottom: '24px', padding: '16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', alignItems: 'flex-end' }}>
+        <div className="analytics-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', alignItems: 'flex-end' }}>
           <div>
             <label>Floor</label>
             <select value={floorId} onChange={(e) => setFloorId(e.target.value)}>
@@ -125,6 +125,7 @@ export const AdminAnalyticsView: React.FC = () => {
         <div>
           {/* Top KPI Cards */}
           <div
+            className="analytics-kpi-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -132,12 +133,12 @@ export const AdminAnalyticsView: React.FC = () => {
               marginBottom: '24px',
             }}
           >
-            <div className="card">
+            <div className="card kpi-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8, fontSize: '13px', fontWeight: 700, textTransform: 'uppercase' }}>
                 <Calendar size={16} />
-                Total Bookings
+                Total Schedules
               </div>
-              <div style={{ fontSize: '32px', fontWeight: 900, marginTop: '8px' }}>
+              <div className="kpi-value" style={{ fontSize: '32px', fontWeight: 900, marginTop: '8px' }}>
                 {analytics.totalReservations}
               </div>
               <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>
@@ -145,12 +146,12 @@ export const AdminAnalyticsView: React.FC = () => {
               </div>
             </div>
 
-            <div className="card">
+            <div className="card kpi-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8, fontSize: '13px', fontWeight: 700, textTransform: 'uppercase' }}>
                 <Clock size={16} />
                 Total Reserved Hours
               </div>
-              <div style={{ fontSize: '32px', fontWeight: 900, marginTop: '8px' }}>
+              <div className="kpi-value" style={{ fontSize: '32px', fontWeight: 900, marginTop: '8px' }}>
                 {analytics.totalReservedHours} hrs
               </div>
               <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>
@@ -158,25 +159,25 @@ export const AdminAnalyticsView: React.FC = () => {
               </div>
             </div>
 
-            <div className="card">
+            <div className="card kpi-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8, fontSize: '13px', fontWeight: 700, textTransform: 'uppercase' }}>
                 <TrendingUp size={16} />
                 Active Confirmed
               </div>
-              <div style={{ fontSize: '32px', fontWeight: 900, marginTop: '8px' }}>
+              <div className="kpi-value" style={{ fontSize: '32px', fontWeight: 900, marginTop: '8px' }}>
                 {analytics.activeReservations}
               </div>
               <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>
-                Valid non-cancelled bookings
+                Valid non-cancelled schedules
               </div>
             </div>
 
-            <div className="card">
+            <div className="card kpi-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8, fontSize: '13px', fontWeight: 700, textTransform: 'uppercase' }}>
                 <XCircle size={16} />
-                Cancelled Bookings
+                Cancelled Schedules
               </div>
-              <div style={{ fontSize: '32px', fontWeight: 900, marginTop: '8px' }}>
+              <div className="kpi-value" style={{ fontSize: '32px', fontWeight: 900, marginTop: '8px' }}>
                 {analytics.cancelledReservations}
               </div>
               <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>
@@ -189,7 +190,7 @@ export const AdminAnalyticsView: React.FC = () => {
           <div className="card" style={{ marginBottom: '24px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <TrendingUp size={18} />
-              Reservation Booking Trends
+              Reservation Schedule Trends
             </h3>
 
             {analytics.dailyTrends.length === 0 ? (
@@ -198,22 +199,22 @@ export const AdminAnalyticsView: React.FC = () => {
               </div>
             ) : (
               <div style={{ overflowX: 'auto', paddingBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '180px', minWidth: '400px', borderBottom: '2px solid var(--color-purple)', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '180px', minWidth: '400px', borderBottom: '1.5px solid var(--color-tint-border)', paddingBottom: '8px' }}>
                   {analytics.dailyTrends.map((t) => {
                     const maxCount = Math.max(...analytics.dailyTrends.map((d) => d.count), 1);
                     const heightPercent = Math.max(15, (t.count / maxCount) * 100);
                     return (
                       <div key={t.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                        <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>{t.count}</div>
+                        <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px', color: 'var(--color-primary-dark)' }}>{t.count}</div>
                         <div
                           style={{
                             width: '32px',
                             height: `${heightPercent}%`,
-                            backgroundColor: 'var(--color-purple)',
+                            backgroundColor: 'var(--color-accent)',
                             borderRadius: '4px 4px 0 0',
                           }}
                         />
-                        <div style={{ fontSize: '11px', marginTop: '6px', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '11px', marginTop: '6px', whiteSpace: 'nowrap', color: 'var(--color-text-muted)' }}>
                           {t.date.substring(5)}
                         </div>
                       </div>
@@ -225,18 +226,19 @@ export const AdminAnalyticsView: React.FC = () => {
           </div>
 
           {/* Detailed Tables Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+          <div className="responsive-split-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
             {/* By Classroom */}
             <div className="card">
               <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Building size={16} />
                 Most Frequently Reserved Classrooms
               </h3>
-              <table className="allocator-table">
+              <div className="table-responsive">
+                <table className="allocator-table">
                 <thead>
                   <tr>
                     <th>Room</th>
-                    <th>Bookings</th>
+                    <th>Schedules</th>
                     <th>Total Hours</th>
                   </tr>
                 </thead>
@@ -247,13 +249,14 @@ export const AdminAnalyticsView: React.FC = () => {
                     analytics.reservationsByClassroom.map((r) => (
                       <tr key={r.room_number}>
                         <td style={{ fontWeight: 800 }}>{r.room_number}</td>
-                        <td style={{ fontWeight: 600 }}>{r.count} bookings</td>
+                        <td style={{ fontWeight: 600 }}>{r.count} schedules</td>
                         <td>{r.hours} hrs</td>
                       </tr>
                     ))
                   )}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
 
             {/* By Faculty */}
@@ -262,11 +265,12 @@ export const AdminAnalyticsView: React.FC = () => {
                 <Users size={16} />
                 Reservations by Faculty Member
               </h3>
-              <table className="allocator-table">
+              <div className="table-responsive">
+                <table className="allocator-table">
                 <thead>
                   <tr>
                     <th>Faculty Name</th>
-                    <th>Bookings</th>
+                    <th>Schedules</th>
                     <th>Hours</th>
                   </tr>
                 </thead>
@@ -277,13 +281,14 @@ export const AdminAnalyticsView: React.FC = () => {
                     analytics.reservationsByFaculty.map((f) => (
                       <tr key={f.faculty_name}>
                         <td style={{ fontWeight: 700 }}>{f.faculty_name}</td>
-                        <td style={{ fontWeight: 600 }}>{f.count} bookings</td>
+                        <td style={{ fontWeight: 600 }}>{f.count} schedules</td>
                         <td>{f.hours} hrs</td>
                       </tr>
                     ))
                   )}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
 
             {/* By Floor */}
@@ -292,11 +297,12 @@ export const AdminAnalyticsView: React.FC = () => {
                 <Layers size={16} />
                 Classroom Usage by Floor
               </h3>
-              <table className="allocator-table">
+              <div className="table-responsive">
+                <table className="allocator-table">
                 <thead>
                   <tr>
                     <th>Floor Level</th>
-                    <th>Bookings</th>
+                    <th>Schedules</th>
                     <th>Hours</th>
                   </tr>
                 </thead>
@@ -307,13 +313,14 @@ export const AdminAnalyticsView: React.FC = () => {
                     analytics.usageByFloor.map((fl) => (
                       <tr key={fl.floor_name}>
                         <td style={{ fontWeight: 700 }}>{fl.floor_name}</td>
-                        <td style={{ fontWeight: 600 }}>{fl.count} bookings</td>
+                        <td style={{ fontWeight: 600 }}>{fl.count} schedules</td>
                         <td>{fl.hours} hrs</td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         </div>

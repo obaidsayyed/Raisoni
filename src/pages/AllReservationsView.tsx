@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Reservation, Classroom, Profile } from '../types';
 import {
   getReservations,
@@ -18,9 +18,11 @@ import {
   Filter,
   Trash2,
 } from 'lucide-react';
+import { useFeedback } from '../context/FeedbackContext';
 
 export const AllReservationsView: React.FC = () => {
   const { user } = useAuth();
+  const { toast, confirm } = useFeedback();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [facultyList, setFacultyList] = useState<Profile[]>([]);
@@ -30,6 +32,8 @@ export const AllReservationsView: React.FC = () => {
   const [facultyFilter, setFacultyFilter] = useState('');
   const [classroomFilter, setClassroomFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'confirmed' | 'cancelled'>('all');
+  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'last_week' | 'last_month' | 'custom' | 'all'>('today');
+  const [customDate, setCustomDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
   const loadData = useCallback(async () => {
     try {
@@ -54,39 +58,124 @@ export const AllReservationsView: React.FC = () => {
     return () => unsub();
   }, [loadData]);
 
-  const handleAdminCancel = async (id: string, roomNum: string, facultyName: string) => {
+  const handleAdminCancel = (id: string, roomNum: string, facultyName: string) => {
     if (!user) return;
-    if (confirm(`Administrator Action: Are you sure you want to cancel the booking for ${roomNum} made by ${facultyName}?`)) {
-      try {
-        await cancelReservation(id, user.id, true);
-        loadData();
-      } catch (err: any) {
-        alert(err.message || 'Failed to cancel reservation.');
-      }
-    }
+    confirm({
+      title: 'Cancel Reservation',
+      message: `Administrator Action: Are you sure you want to cancel the schedule for ${roomNum} made by ${facultyName}?`,
+      confirmText: 'Cancel Schedule',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await cancelReservation(id, user.id, true);
+          toast.success(`Schedule for ${roomNum} cancelled.`);
+          loadData();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to cancel reservation.');
+        }
+      },
+    });
   };
 
-  const filtered = reservations.filter((r) => {
-    if (facultyFilter && r.faculty_id !== facultyFilter) return false;
-    if (classroomFilter && r.classroom_id !== classroomFilter) return false;
-    if (statusFilter !== 'all' && r.status !== statusFilter) return false;
-    return true;
-  });
+  const filtered = useMemo(() => {
+    return reservations.filter((r) => {
+      if (facultyFilter && r.faculty_id !== facultyFilter) return false;
+      if (classroomFilter && r.classroom_id !== classroomFilter) return false;
+      if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+
+      // Date filtering (defaults to Today)
+      if (dateFilter !== 'all') {
+        const resStart = new Date(r.start_time);
+        const resYear = resStart.getFullYear();
+        const resMonth = String(resStart.getMonth() + 1).padStart(2, '0');
+        const resDay = String(resStart.getDate()).padStart(2, '0');
+        const resDateStr = `${resYear}-${resMonth}-${resDay}`;
+
+        const now = new Date();
+        const todayYear = now.getFullYear();
+        const todayMonth = String(now.getMonth() + 1).padStart(2, '0');
+        const todayDay = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
+
+        if (dateFilter === 'today') {
+          if (resDateStr !== todayStr) return false;
+        } else if (dateFilter === 'yesterday') {
+          const yest = new Date(now);
+          yest.setDate(yest.getDate() - 1);
+          const yYear = yest.getFullYear();
+          const yMonth = String(yest.getMonth() + 1).padStart(2, '0');
+          const yDay = String(yest.getDate()).padStart(2, '0');
+          const yesterdayStr = `${yYear}-${yMonth}-${yDay}`;
+          if (resDateStr !== yesterdayStr) return false;
+        } else if (dateFilter === 'last_week') {
+          const sevenDaysAgo = new Date(now);
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          sevenDaysAgo.setHours(0, 0, 0, 0);
+          const endOfToday = new Date(now);
+          endOfToday.setHours(23, 59, 59, 999);
+          if (resStart < sevenDaysAgo || resStart > endOfToday) return false;
+        } else if (dateFilter === 'last_month') {
+          const thirtyDaysAgo = new Date(now);
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          thirtyDaysAgo.setHours(0, 0, 0, 0);
+          const endOfToday = new Date(now);
+          endOfToday.setHours(23, 59, 59, 999);
+          if (resStart < thirtyDaysAgo || resStart > endOfToday) return false;
+        } else if (dateFilter === 'custom') {
+          if (customDate && resDateStr !== customDate) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [reservations, facultyFilter, classroomFilter, statusFilter, dateFilter, customDate]);
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="page-container">
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '0.5px' }}>
           ALL FACULTY RESERVATIONS
         </h1>
         <p style={{ opacity: 0.8, fontSize: '14px', marginTop: '4px' }}>
-          Comprehensive oversight of all college classroom bookings across all departments
+          Comprehensive oversight of all college classroom schedules across all departments
         </p>
       </div>
 
       {/* Filter Bar */}
       <div className="card" style={{ marginBottom: '20px', padding: '16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', alignItems: 'flex-end' }}>
+        <div className="all-reservations-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Calendar size={14} />
+              Date Filter
+            </label>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value as any)}
+            >
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="last_week">Last Week</option>
+              <option value="last_month">Last Month</option>
+              <option value="custom">Custom Date</option>
+              <option value="all">All Dates</option>
+            </select>
+          </div>
+
+          {dateFilter === 'custom' && (
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Calendar size={14} />
+                Select Date
+              </label>
+              <input
+                type="date"
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+              />
+            </div>
+          )}
+
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <User size={14} />
@@ -126,7 +215,7 @@ export const AllReservationsView: React.FC = () => {
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Filter size={14} />
-              Booking Status
+              Schedule Status
             </label>
             <select
               value={statusFilter}
@@ -139,7 +228,7 @@ export const AllReservationsView: React.FC = () => {
           </div>
 
           <div style={{ fontSize: '13px', fontWeight: 600 }}>
-            <span className="badge-outline">Showing: {filtered.length} Bookings</span>
+            <span className="badge-outline">Showing: {filtered.length} Schedules</span>
           </div>
         </div>
       </div>
@@ -158,7 +247,7 @@ export const AllReservationsView: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-responsive">
           <table className="allocator-table">
             <thead>
               <tr>
@@ -213,7 +302,7 @@ export const AllReservationsView: React.FC = () => {
                           onClick={() => handleAdminCancel(r.id, r.classroom?.room_number || '', r.faculty?.full_name || '')}
                           className="btn-secondary"
                           style={{ padding: '4px 8px', fontSize: '11px' }}
-                          title="Cancel Booking"
+                          title="Cancel Schedule"
                         >
                           <Trash2 size={13} />
                           Cancel

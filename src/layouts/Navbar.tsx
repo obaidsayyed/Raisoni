@@ -2,15 +2,10 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   Building2,
-  Calendar,
-  UserCheck,
   ShieldAlert,
-  BarChart3,
-  KeyRound,
   LogOut,
   LogIn,
   Radio,
-  BookOpen,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -19,16 +14,26 @@ interface NavbarProps {
   onOpenLoginModal?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenLoginModal }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  onSelectTab,
+  onOpenLoginModal,
+}) => {
   const { user, role, isAuthenticated, logout, mustChangePassword } = useAuth();
 
   return (
-    <header style={{ borderBottom: '2px solid var(--color-purple)', backgroundColor: 'var(--color-white)' }}>
+    <header
+      style={{
+        borderBottom: '1px solid var(--color-tint-border)',
+        backgroundColor: 'var(--color-white)',
+        boxShadow: 'var(--shadow-sm)',
+        zIndex: 60,
+      }}
+    >
       {/* Top Banner if user must change password */}
       {mustChangePassword && (
         <div
           style={{
-            backgroundColor: 'var(--color-purple)',
+            backgroundColor: 'var(--color-primary-dark)',
             color: 'var(--color-white)',
             padding: '8px 16px',
             textAlign: 'center',
@@ -45,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenL
           <button
             onClick={() => onSelectTab('security')}
             className="btn-secondary"
-            style={{ padding: '4px 8px', fontSize: '11px', textTransform: 'uppercase' }}
+            style={{ padding: '4px 10px', fontSize: '11px', textTransform: 'uppercase' }}
           >
             Change Password Now
           </button>
@@ -54,10 +59,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenL
 
       {/* Main Bar */}
       <div
+        className="app-header-bar"
         style={{
-          maxWidth: '1280px',
-          margin: '0 auto',
-          padding: '14px 20px',
+          width: '100%',
+          padding: '12px 20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -66,33 +71,55 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenL
         }}
       >
         {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
+            className="app-header-brand-icon"
             style={{
-              backgroundColor: 'var(--color-purple)',
+              backgroundColor: 'var(--color-primary-dark)',
               color: 'var(--color-white)',
               padding: '8px',
-              borderRadius: '6px',
+              borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
-            <Building2 size={24} />
+            <Building2 size={20} />
           </div>
+
           <div>
-            <div style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '0.5px' }}>
-              CAMPUS CLASSROOM ALLOCATOR
+            <div
+              className="app-header-brand-title"
+              style={{
+                fontWeight: 800,
+                fontSize: '17px',
+                letterSpacing: '0.3px',
+                color: 'var(--color-primary-dark)',
+                lineHeight: 1.2,
+              }}
+            >
+              RAISONI ROOM ALLOCATOR
             </div>
-            <div style={{ fontSize: '12px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Radio size={12} />
-              REALTIME RESERVATION SYSTEM
+            <div
+              className="app-header-brand-sub"
+              style={{
+                fontSize: '11px',
+                color: 'var(--color-text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginTop: '1px',
+              }}
+            >
+              <Radio size={11} color="var(--color-accent)" />
+              ACADEMIC ALLOCATION & SCHEDULING SYSTEM
             </div>
           </div>
         </div>
 
         {/* Mode & User Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="app-header-user-status" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div className="badge-outline">
             {role === 'admin' && 'ADMINISTRATOR MODE'}
             {role === 'faculty' && `FACULTY: ${user?.full_name || user?.username}`}
@@ -100,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenL
           </div>
 
           {isAuthenticated ? (
-            <button onClick={logout} className="btn-secondary" style={{ padding: '6px 12px' }}>
+            <button onClick={logout} className="btn-secondary" style={{ padding: '6px 14px' }}>
               <LogOut size={14} />
               Sign Out
             </button>
@@ -108,166 +135,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenL
             <button
               onClick={onOpenLoginModal}
               className="btn-primary"
-              style={{ padding: '6px 14px' }}
+              style={{ padding: '7px 16px' }}
             >
               <LogIn size={14} />
-              Faculty / Admin Sign In
+              Sign In
             </button>
           )}
         </div>
       </div>
-
-      {/* Navigation Sub-bar */}
-      <nav
-        style={{
-          backgroundColor: 'var(--color-white)',
-          borderTop: '1px solid var(--color-purple)',
-          padding: '0 20px',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1280px',
-            margin: '0 auto',
-            display: 'flex',
-            gap: '8px',
-            overflowX: 'auto',
-          }}
-        >
-          {/* Universal Tabs */}
-          <button
-            onClick={() => onSelectTab('classrooms')}
-            style={{
-              backgroundColor: currentTab === 'classrooms' ? 'var(--color-purple)' : 'transparent',
-              color: currentTab === 'classrooms' ? 'var(--color-white)' : 'var(--color-purple)',
-              border: 'none',
-              borderRadius: '0',
-              padding: '12px 16px',
-              borderBottom: currentTab === 'classrooms' ? '3px solid var(--color-purple)' : 'none',
-              fontWeight: currentTab === 'classrooms' ? 700 : 500,
-            }}
-          >
-            <Building2 size={16} />
-            Room Availability
-          </button>
-
-          <button
-            onClick={() => onSelectTab('timetable')}
-            style={{
-              backgroundColor: currentTab === 'timetable' ? 'var(--color-purple)' : 'transparent',
-              color: currentTab === 'timetable' ? 'var(--color-white)' : 'var(--color-purple)',
-              border: 'none',
-              borderRadius: '0',
-              padding: '12px 16px',
-              fontWeight: currentTab === 'timetable' ? 700 : 500,
-            }}
-          >
-            <BookOpen size={16} />
-            Official Timetable
-          </button>
-
-          {/* Faculty Tabs */}
-          {role === 'faculty' && (
-            <button
-              onClick={() => onSelectTab('my-reservations')}
-              style={{
-                backgroundColor: currentTab === 'my-reservations' ? 'var(--color-purple)' : 'transparent',
-                color: currentTab === 'my-reservations' ? 'var(--color-white)' : 'var(--color-purple)',
-                border: 'none',
-                borderRadius: '0',
-                padding: '12px 16px',
-                fontWeight: currentTab === 'my-reservations' ? 700 : 500,
-              }}
-            >
-              <Calendar size={16} />
-              My Bookings
-            </button>
-          )}
-
-          {/* Admin Tabs */}
-          {role === 'admin' && (
-            <>
-              <button
-                onClick={() => onSelectTab('all-reservations')}
-                style={{
-                  backgroundColor: currentTab === 'all-reservations' ? 'var(--color-purple)' : 'transparent',
-                  color: currentTab === 'all-reservations' ? 'var(--color-white)' : 'var(--color-purple)',
-                  border: 'none',
-                  borderRadius: '0',
-                  padding: '12px 16px',
-                  fontWeight: currentTab === 'all-reservations' ? 700 : 500,
-                }}
-              >
-                <Calendar size={16} />
-                All Reservations
-              </button>
-
-              <button
-                onClick={() => onSelectTab('manage-rooms')}
-                style={{
-                  backgroundColor: currentTab === 'manage-rooms' ? 'var(--color-purple)' : 'transparent',
-                  color: currentTab === 'manage-rooms' ? 'var(--color-white)' : 'var(--color-purple)',
-                  border: 'none',
-                  borderRadius: '0',
-                  padding: '12px 16px',
-                  fontWeight: currentTab === 'manage-rooms' ? 700 : 500,
-                }}
-              >
-                <Building2 size={16} />
-                Floors & Classrooms
-              </button>
-
-              <button
-                onClick={() => onSelectTab('manage-faculty')}
-                style={{
-                  backgroundColor: currentTab === 'manage-faculty' ? 'var(--color-purple)' : 'transparent',
-                  color: currentTab === 'manage-faculty' ? 'var(--color-white)' : 'var(--color-purple)',
-                  border: 'none',
-                  borderRadius: '0',
-                  padding: '12px 16px',
-                  fontWeight: currentTab === 'manage-faculty' ? 700 : 500,
-                }}
-              >
-                <UserCheck size={16} />
-                Faculty Accounts
-              </button>
-
-              <button
-                onClick={() => onSelectTab('analytics')}
-                style={{
-                  backgroundColor: currentTab === 'analytics' ? 'var(--color-purple)' : 'transparent',
-                  color: currentTab === 'analytics' ? 'var(--color-white)' : 'var(--color-purple)',
-                  border: 'none',
-                  borderRadius: '0',
-                  padding: '12px 16px',
-                  fontWeight: currentTab === 'analytics' ? 700 : 500,
-                }}
-              >
-                <BarChart3 size={16} />
-                Admin Analytics
-              </button>
-            </>
-          )}
-
-          {/* Account Security (for authenticated users) */}
-          {isAuthenticated && (
-            <button
-              onClick={() => onSelectTab('security')}
-              style={{
-                backgroundColor: currentTab === 'security' ? 'var(--color-purple)' : 'transparent',
-                color: currentTab === 'security' ? 'var(--color-white)' : 'var(--color-purple)',
-                border: 'none',
-                borderRadius: '0',
-                padding: '12px 16px',
-                fontWeight: currentTab === 'security' ? 700 : 500,
-              }}
-            >
-              <KeyRound size={16} />
-              Account Security
-            </button>
-          )}
-        </div>
-      </nav>
     </header>
   );
 };

@@ -5,7 +5,6 @@ import {
   BookOpen,
   CalendarCheck,
   AlertTriangle,
-  Users,
   Clock,
   User,
 } from 'lucide-react';
@@ -15,6 +14,7 @@ interface RoomCardProps {
   availability: AvailabilityResult;
   onReserve: (classroom: Classroom) => void;
   isReaderMode: boolean;
+  isPastSlot?: boolean;
 }
 
 export const RoomCard: React.FC<RoomCardProps> = ({
@@ -22,6 +22,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
   availability,
   onReserve,
   isReaderMode,
+  isPastSlot = false,
 }) => {
   const isAvailable = availability.available;
   const isLecture = availability.conflict_type === 'timetable';
@@ -45,13 +46,22 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                 fontSize: '11px',
                 textTransform: 'uppercase',
                 fontWeight: 700,
-                letterSpacing: '0.5px',
-                opacity: isLecture ? 0.9 : 0.7,
+                letterSpacing: '0.6px',
+                color: isLecture ? 'var(--color-tint-soft)' : 'var(--color-text-muted)',
               }}
             >
               {classroom.floor?.name || 'Main Wing'}
             </span>
-            <h3 style={{ fontSize: '24px', fontWeight: 800, lineHeight: 1.1, marginTop: '2px' }}>
+            <h3
+              className="room-card-number"
+              style={{
+                fontSize: '22px',
+                fontWeight: 800,
+                lineHeight: 1.2,
+                marginTop: '2px',
+                color: isLecture ? '#FFFFFF' : 'var(--color-primary-dark)',
+              }}
+            >
               {classroom.room_number}
             </h3>
           </div>
@@ -59,7 +69,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
           {/* State Badge with Icon */}
           <div>
             {isInactive && (
-              <span className="badge-outline" style={{ borderStyle: 'dotted' }}>
+              <span className="badge-outline" style={{ borderStyle: 'dashed', opacity: 0.8 }}>
                 <AlertTriangle size={12} />
                 INACTIVE
               </span>
@@ -77,56 +87,65 @@ export const RoomCard: React.FC<RoomCardProps> = ({
               </span>
             )}
             {isFacultyReserved && (
-              <span className="badge-outline" style={{ borderStyle: 'dashed' }}>
+              <span className="badge-outline">
                 <CalendarCheck size={12} />
                 RESERVED
               </span>
             )}
           </div>
         </div>
-
-        {/* Room Capacity */}
-        <div
-          className="room-meta"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '13px',
-            marginTop: '8px',
-          }}
-        >
-          <Users size={14} />
-          Capacity: {classroom.capacity} Students
-        </div>
       </div>
 
       {/* Middle: Details depending on state */}
-      <div style={{ margin: '16px 0', fontSize: '13px' }}>
-        {isAvailable && (
-          <div style={{ padding: '8px 0', borderTop: '1px solid var(--color-purple)', borderBottom: '1px solid var(--color-purple)' }}>
-            <div style={{ fontWeight: 600 }}>Ready for Allocation</div>
-            <div style={{ fontSize: '12px', opacity: 0.8 }}>No scheduled lectures or faculty reservations in this interval.</div>
+      <div className="room-card-body" style={{ margin: '16px 0', fontSize: '13px' }}>
+        {isAvailable && isPastSlot && (
+          <div
+            style={{
+              padding: '10px 12px',
+              backgroundColor: 'var(--color-tint-subtle)',
+              border: '1px solid var(--color-tint-border-subtle)',
+              borderRadius: '6px',
+            }}
+          >
+            <div style={{ fontWeight: 600, color: 'var(--color-primary-dark)' }}>Time Slot Passed</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              This time slot has already passed and can no longer be reserved.
+            </div>
+          </div>
+        )}
+
+        {isAvailable && !isPastSlot && (
+          <div
+            style={{
+              padding: '10px 12px',
+              backgroundColor: 'var(--color-tint-subtle)',
+              border: '1px solid var(--color-tint-border-subtle)',
+              borderRadius: '6px',
+            }}
+          >
+            <div style={{ fontWeight: 600, color: 'var(--color-primary-dark)' }}>Ready for Allocation</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              No scheduled lectures or faculty reservations in this interval.
+            </div>
           </div>
         )}
 
         {isLecture && availability.details && (
           <div
             style={{
-              padding: '10px',
-              backgroundColor: 'var(--color-white)',
-              color: 'var(--color-purple)',
-              borderRadius: '4px',
+              padding: '10px 12px',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '6px',
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '4px' }}>
+            <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '4px', color: '#FFFFFF' }}>
               {availability.details.subject}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', color: 'var(--color-tint-soft)', fontSize: '12px' }}>
               <User size={13} />
               <span>{availability.details.faculty_name}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-tint-soft)', fontSize: '12px' }}>
               <Clock size={13} />
               <span>Time: {availability.details.start_time} - {availability.details.end_time}</span>
             </div>
@@ -136,25 +155,27 @@ export const RoomCard: React.FC<RoomCardProps> = ({
         {isFacultyReserved && availability.details && (
           <div
             style={{
-              padding: '10px',
-              border: '1px solid var(--color-purple)',
-              borderRadius: '4px',
+              padding: '10px 12px',
+              border: '1px solid var(--color-accent-border)',
+              borderRadius: '6px',
               backgroundColor: 'var(--color-white)',
             }}
           >
-            <div style={{ fontWeight: 800, fontSize: '13px', marginBottom: '4px' }}>
+            <div style={{ fontWeight: 800, fontSize: '13px', marginBottom: '4px', color: 'var(--color-primary-dark)' }}>
               Faculty Reservation
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-              <User size={13} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', fontSize: '12px' }}>
+              <User size={13} color="var(--color-accent)" />
               <span style={{ fontWeight: 600 }}>{availability.details.faculty_name}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
               <Clock size={13} />
-              <span>{new Date(availability.details.start_time!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(availability.details.end_time!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>
+                {new Date(availability.details.start_time!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(availability.details.end_time!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
             </div>
             {availability.details.purpose && (
-              <div style={{ fontSize: '12px', marginTop: '4px', fontStyle: 'italic' }}>
+              <div style={{ fontSize: '12px', marginTop: '4px', fontStyle: 'italic', color: 'var(--color-text-muted)' }}>
                 "{availability.details.purpose}"
               </div>
             )}
@@ -162,7 +183,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
         )}
 
         {isInactive && (
-          <div style={{ fontStyle: 'italic', opacity: 0.8 }}>
+          <div style={{ fontStyle: 'italic', color: 'var(--color-text-muted)', fontSize: '12px' }}>
             Room currently unavailable for reservations due to scheduled maintenance.
           </div>
         )}
@@ -171,19 +192,30 @@ export const RoomCard: React.FC<RoomCardProps> = ({
       {/* Footer Action */}
       <div>
         {isAvailable ? (
-          <button
-            onClick={() => onReserve(classroom)}
-            className={isLecture ? 'btn-secondary' : 'btn-primary'}
-            style={{ width: '100%' }}
-          >
-            <CalendarCheck size={16} />
-            {isReaderMode ? 'Sign In to Reserve' : 'Reserve Classroom'}
-          </button>
+          isPastSlot ? (
+            <button
+              disabled
+              className="btn-secondary"
+              style={{ width: '100%', opacity: 0.6, cursor: 'not-allowed' }}
+              title="Cannot reserve classroom for a past date or time"
+            >
+              Time Slot Passed
+            </button>
+          ) : (
+            <button
+              onClick={() => onReserve(classroom)}
+              className="btn-primary"
+              style={{ width: '100%' }}
+            >
+              <CalendarCheck size={15} />
+              {isReaderMode ? 'Sign In to Reserve' : 'Reserve Classroom'}
+            </button>
+          )
         ) : (
           <button
             disabled
             className="btn-secondary"
-            style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }}
+            style={{ width: '100%', opacity: 0.6, cursor: 'not-allowed' }}
           >
             Unavailable in Selected Interval
           </button>

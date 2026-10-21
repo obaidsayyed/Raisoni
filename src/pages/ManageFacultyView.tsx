@@ -5,18 +5,24 @@ import {
   createFacultyAccount,
   resetFacultyPassword,
   toggleFacultyStatus,
+  deleteFacultyAccount,
   subscribeToRealtimeChanges,
 } from '../services/storageEngine';
+import { useFeedback } from '../context/FeedbackContext';
+import { PasswordInput } from '../components/PasswordInput';
 import {
   UserCheck,
   UserPlus,
+  UserX,
   KeyRound,
   AlertTriangle,
   CheckCircle2,
   Lock,
+  Trash2,
 } from 'lucide-react';
 
 export const ManageFacultyView: React.FC = () => {
+  const { toast, confirm } = useFeedback();
   const [facultyList, setFacultyList] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,13 +60,17 @@ export const ManageFacultyView: React.FC = () => {
     setSuccessMsg(null);
     try {
       const newAcc = await createFacultyAccount(fullName, username, tempPassword);
-      setSuccessMsg(`Faculty account for ${newAcc.full_name} (@${newAcc.username}) successfully provisioned. They will be required to change their temporary password upon first sign in.`);
+      const msg = `Faculty account for ${newAcc.full_name} (@${newAcc.username}) successfully provisioned.`;
+      setSuccessMsg(msg);
+      toast.success(msg, 'Faculty Provisioned');
       setFullName('');
       setUsername('');
       setTempPassword('Faculty@123');
       loadData();
     } catch (err: any) {
-      setError(err.message || 'Failed to create faculty account.');
+      const errMsg = err.message || 'Failed to create faculty account.';
+      setError(errMsg);
+      toast.error(errMsg, 'Provisioning Error');
     }
   };
 
@@ -71,36 +81,76 @@ export const ManageFacultyView: React.FC = () => {
     setSuccessMsg(null);
     try {
       await resetFacultyPassword(resettingUser.id, newTempPassword);
-      setSuccessMsg(`Temporary password for @${resettingUser.username} has been reset. The faculty member must change it on their next login.`);
+      const msg = `Temporary password for @${resettingUser.username} has been reset.`;
+      setSuccessMsg(msg);
+      toast.success(msg, 'Password Reset');
       setResettingUser(null);
       setNewTempPassword('Faculty@123');
       loadData();
     } catch (err: any) {
-      setError(err.message || 'Failed to reset password.');
+      const errMsg = err.message || 'Failed to reset password.';
+      setError(errMsg);
+      toast.error(errMsg, 'Reset Failed');
     }
   };
 
-  const handleToggleStatus = async (faculty: Profile) => {
+  const handleToggleStatus = (faculty: Profile) => {
     const nextStatus = faculty.status === 'active' ? 'disabled' : 'active';
-    if (confirm(`Are you sure you want to ${nextStatus === 'disabled' ? 'deactivate' : 'activate'} account @${faculty.username}?`)) {
-      try {
-        setError(null);
-        await toggleFacultyStatus(faculty.id, nextStatus);
-        loadData();
-      } catch (err: any) {
-        setError(err.message || 'Failed to update account status.');
-      }
-    }
+    const isDeactivating = nextStatus === 'disabled';
+
+    confirm({
+      title: isDeactivating ? 'Deactivate Faculty Account' : 'Activate Faculty Account',
+      message: isDeactivating
+        ? `Are you sure you want to deactivate faculty account @${faculty.username} (${faculty.full_name})? They will be unable to log in or schedule classrooms until reactivated.`
+        : `Are you sure you want to reactivate faculty account @${faculty.username} (${faculty.full_name})?`,
+      confirmText: isDeactivating ? 'Deactivate Account' : 'Activate Account',
+      variant: isDeactivating ? 'danger' : 'primary',
+      onConfirm: async () => {
+        try {
+          setError(null);
+          await toggleFacultyStatus(faculty.id, nextStatus);
+          const msg = `Account @${faculty.username} is now ${nextStatus}.`;
+          toast.success(msg);
+          loadData();
+        } catch (err: any) {
+          const errMsg = err.message || 'Failed to update account status.';
+          setError(errMsg);
+          toast.error(errMsg);
+        }
+      },
+    });
+  };
+
+  const handleDeleteFaculty = (faculty: Profile) => {
+    confirm({
+      title: 'Delete Faculty Account',
+      message: `Permanently delete faculty account @${faculty.username} (${faculty.full_name})? Any active classroom reservations made by this faculty member will also be removed. This cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          setError(null);
+          await deleteFacultyAccount(faculty.id);
+          const msg = `Faculty member @${faculty.username} has been deleted.`;
+          toast.success(msg, 'Account Deleted');
+          loadData();
+        } catch (err: any) {
+          const errMsg = err.message || 'Failed to delete faculty account.';
+          setError(errMsg);
+          toast.error(errMsg, 'Delete Failed');
+        }
+      },
+    });
   };
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="page-container">
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '0.5px' }}>
           FACULTY ACCOUNTS & CREDENTIAL PROVISIONING
         </h1>
         <p style={{ opacity: 0.8, fontSize: '14px', marginTop: '4px' }}>
-          Provision new college faculty credentials, issue temporary passwords, and control authorization status
+          Provision new college faculty credentials, manage authorization status, or remove accounts
         </p>
       </div>
 
@@ -124,7 +174,7 @@ export const ManageFacultyView: React.FC = () => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+      <div className="responsive-split-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
         {/* Create Account Form */}
         <div className="card">
           <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -140,7 +190,11 @@ export const ManageFacultyView: React.FC = () => {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
+                minLength={2}
+                maxLength={60}
+                autoComplete="name"
               />
+              <div className="form-helper">2 to 60 characters</div>
             </div>
 
             <div style={{ marginBottom: '14px' }}>
@@ -151,19 +205,28 @@ export const ManageFacultyView: React.FC = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                minLength={3}
+                maxLength={32}
+                pattern="^[a-zA-Z0-9_.-]+$"
+                title="3 to 32 characters (letters, numbers, hyphens, dots, underscores)"
+                autoComplete="off"
+                spellCheck={false}
               />
+              <div className="form-helper">3 to 32 alphanumeric characters</div>
             </div>
 
             <div style={{ marginBottom: '18px' }}>
               <label>Temporary Password * (Min 8 chars)</label>
-              <input
-                type="text"
+              <PasswordInput
                 value={tempPassword}
                 onChange={(e) => setTempPassword(e.target.value)}
                 required
+                minLength={8}
+                maxLength={64}
+                autoComplete="new-password"
               />
-              <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '4px' }}>
-                Note: The faculty member will be required to change this upon their first login.
+              <div className="form-helper">
+                Minimum 8 characters. Faculty will be prompted to change this on initial login.
               </div>
             </div>
 
@@ -185,7 +248,7 @@ export const ManageFacultyView: React.FC = () => {
               Loading faculty accounts...
             </div>
           ) : (
-            <div style={{ maxHeight: '450px', overflowY: 'auto' }}>
+            <div className="table-responsive" style={{ maxHeight: '450px', overflowY: 'auto' }}>
               <table className="allocator-table">
                 <thead>
                   <tr>
@@ -204,14 +267,12 @@ export const ManageFacultyView: React.FC = () => {
                         <td style={{ fontWeight: 700 }}>{f.full_name}</td>
                         <td>@{f.username}</td>
                         <td>
-                          <button
-                            onClick={() => handleToggleStatus(f)}
+                          <span
                             className={isActive ? 'badge-solid' : 'badge-outline'}
-                            style={{ border: 'none', cursor: 'pointer', fontSize: '10px' }}
-                            title="Click to toggle active/disabled"
+                            style={{ fontSize: '10px' }}
                           >
-                            {isActive ? 'ACTIVE' : 'DISABLED'}
-                          </button>
+                            {isActive ? 'ACTIVE' : 'DEACTIVATED'}
+                          </span>
                         </td>
                         <td>
                           {f.must_change_password ? (
@@ -223,15 +284,43 @@ export const ManageFacultyView: React.FC = () => {
                           )}
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <button
-                            onClick={() => setResettingUser(f)}
-                            className="btn-secondary"
-                            style={{ padding: '4px 8px', fontSize: '11px' }}
-                            title="Reset Temporary Password"
-                          >
-                            <KeyRound size={12} />
-                            Reset Password
-                          </button>
+                          <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            {/* Deactivate / Activate Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStatus(f)}
+                              className="btn-secondary"
+                              style={{ padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              title={isActive ? 'Deactivate faculty account' : 'Activate faculty account'}
+                            >
+                              {isActive ? <UserX size={12} /> : <UserCheck size={12} />}
+                              {isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFaculty(f)}
+                              className="btn-secondary"
+                              style={{ padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              title="Permanently delete faculty account"
+                            >
+                              <Trash2 size={12} />
+                              Delete
+                            </button>
+
+                            {/* Reset Password Button */}
+                            <button
+                              type="button"
+                              onClick={() => setResettingUser(f)}
+                              className="btn-secondary"
+                              style={{ padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              title="Reset Temporary Password"
+                            >
+                              <KeyRound size={12} />
+                              Reset Pass
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -256,13 +345,16 @@ export const ManageFacultyView: React.FC = () => {
             </p>
             <form onSubmit={handleResetPassword}>
               <div style={{ marginBottom: '16px' }}>
-                <label>New Temporary Password (Min 8 chars)</label>
-                <input
-                  type="text"
+                <label>New Temporary Password * (Min 8 chars)</label>
+                <PasswordInput
                   value={newTempPassword}
                   onChange={(e) => setNewTempPassword(e.target.value)}
                   required
+                  minLength={8}
+                  maxLength={64}
+                  autoComplete="new-password"
                 />
+                <div className="form-helper">Minimum 8 characters</div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                 <button

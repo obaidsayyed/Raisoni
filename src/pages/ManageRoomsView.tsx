@@ -19,8 +19,10 @@ import {
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
+import { useFeedback } from '../context/FeedbackContext';
 
 export const ManageRoomsView: React.FC = () => {
+  const { toast, confirm } = useFeedback();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,6 @@ export const ManageRoomsView: React.FC = () => {
   // Classroom Form State
   const [roomNumber, setRoomNumber] = useState('');
   const [classroomFloorId, setClassroomFloorId] = useState('');
-  const [capacity, setCapacity] = useState<number>(50);
   const [editingRoom, setEditingRoom] = useState<Classroom | null>(null);
 
   const loadData = useCallback(async () => {
@@ -41,8 +42,10 @@ export const ManageRoomsView: React.FC = () => {
       const [allRooms, allFloors] = await Promise.all([getClassrooms(), getFloors()]);
       setClassrooms(allRooms);
       setFloors(allFloors);
-      if (allFloors.length > 0 && !classroomFloorId) {
+      if (allFloors.length > 0 && (!classroomFloorId || !allFloors.some((f) => f.id === classroomFloorId))) {
         setClassroomFloorId(allFloors[0].id);
+      } else if (allFloors.length === 0) {
+        setClassroomFloorId('');
       }
     } catch (e) {
       console.error('Failed to load room data', e);
@@ -74,35 +77,46 @@ export const ManageRoomsView: React.FC = () => {
     }
   };
 
-  const handleDeleteFloor = async (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete floor "${name}"?`)) {
-      try {
-        setError(null);
-        await deleteFloor(id);
-        loadData();
-      } catch (err: any) {
-        setError(err.message || 'Cannot delete floor.');
-      }
-    }
+  const handleDeleteFloor = (id: string, name: string) => {
+    confirm({
+      title: 'Delete Floor',
+      message: `Are you sure you want to delete floor "${name}"? All classrooms on this floor and their schedules will be deleted automatically.`,
+      confirmText: 'Delete Floor',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          setError(null);
+          await deleteFloor(id);
+          toast.success(`Floor "${name}" deleted.`);
+          loadData();
+        } catch (err: any) {
+          const errMsg = err.message || 'Cannot delete floor.';
+          setError(errMsg);
+          toast.error(errMsg);
+        }
+      },
+    });
   };
 
   // Classroom Actions
   const handleSaveClassroom = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!classroomFloorId) {
+      setError('Please create and select a floor before adding a classroom.');
+      return;
+    }
     try {
       if (editingRoom) {
         await updateClassroom(editingRoom.id, {
           room_number: roomNumber,
           floor_id: classroomFloorId,
-          capacity,
         });
         setEditingRoom(null);
       } else {
-        await createClassroom(roomNumber, classroomFloorId, capacity);
+        await createClassroom(roomNumber, classroomFloorId);
       }
       setRoomNumber('');
-      setCapacity(50);
       loadData();
     } catch (err: any) {
       setError(err.message || 'Failed to save classroom.');
@@ -119,26 +133,35 @@ export const ManageRoomsView: React.FC = () => {
     }
   };
 
-  const handleDeleteRoom = async (id: string, roomNum: string) => {
-    if (confirm(`Are you sure you want to delete classroom "${roomNum}"?`)) {
-      try {
-        setError(null);
-        await deleteClassroom(id);
-        loadData();
-      } catch (err: any) {
-        setError(err.message || 'Cannot delete classroom.');
-      }
-    }
+  const handleDeleteRoom = (id: string, roomNum: string) => {
+    confirm({
+      title: 'Delete Classroom',
+      message: `Are you sure you want to delete classroom "${roomNum}"? Existing schedules and allocations for this room will also be removed.`,
+      confirmText: 'Delete Classroom',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          setError(null);
+          await deleteClassroom(id);
+          toast.success(`Classroom ${roomNum} deleted.`);
+          loadData();
+        } catch (err: any) {
+          const errMsg = err.message || 'Cannot delete classroom.';
+          setError(errMsg);
+          toast.error(errMsg);
+        }
+      },
+    });
   };
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="page-container">
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '0.5px' }}>
           FLOORS & CLASSROOMS MANAGEMENT
         </h1>
         <p style={{ opacity: 0.8, fontSize: '14px', marginTop: '4px' }}>
-          Configure college infrastructure, assign rooms to floors, and control active booking status
+          Configure college infrastructure, assign rooms to floors, and control active room status
         </p>
       </div>
 
@@ -153,7 +176,7 @@ export const ManageRoomsView: React.FC = () => {
       )}
 
       {/* Two Column Layout: Floors on Left, Classrooms on Right */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+      <div className="responsive-split-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
         {/* Floors Column */}
         <div>
           <div className="card" style={{ marginBottom: '20px' }}>
@@ -170,16 +193,23 @@ export const ManageRoomsView: React.FC = () => {
                   value={floorName}
                   onChange={(e) => setFloorName(e.target.value)}
                   required
+                  minLength={1}
+                  maxLength={40}
                 />
+                <div className="form-helper">1 to 40 characters</div>
               </div>
               <div style={{ marginBottom: '16px' }}>
-                <label>Display Order (Sorting)</label>
+                <label>Display Order (Sorting) *</label>
                 <input
                   type="number"
                   value={floorOrder}
                   onChange={(e) => setFloorOrder(Number(e.target.value))}
                   required
+                  min={1}
+                  max={100}
+                  step={1}
                 />
+                <div className="form-helper">Numeric sequence order (1-100)</div>
               </div>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                 {editingFloor && (
@@ -207,47 +237,57 @@ export const ManageRoomsView: React.FC = () => {
             <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>
               Configured Floors ({floors.length})
             </h3>
-            <table className="allocator-table">
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th>Floor Name</th>
-                  <th style={{ textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {floors.map((f) => (
-                  <tr key={f.id}>
-                    <td style={{ fontWeight: 700 }}>#{f.display_order}</td>
-                    <td style={{ fontWeight: 600 }}>{f.name}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
-                        <button
-                          onClick={() => {
-                            setEditingFloor(f);
-                            setFloorName(f.name);
-                            setFloorOrder(f.display_order);
-                          }}
-                          className="btn-secondary"
-                          style={{ padding: '4px 6px', fontSize: '11px' }}
-                          title="Edit Floor"
-                        >
-                          <Edit2 size={12} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteFloor(f.id, f.name)}
-                          className="btn-secondary"
-                          style={{ padding: '4px 6px', fontSize: '11px' }}
-                          title="Delete Floor"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </td>
+            <div className="table-responsive">
+              <table className="allocator-table">
+                <thead>
+                  <tr>
+                    <th>Order</th>
+                    <th>Floor Name</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {floors.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} style={{ textAlign: 'center', opacity: 0.6, padding: '24px 0' }}>
+                        No floors added yet. Add your first floor above.
+                      </td>
+                    </tr>
+                  ) : (
+                    floors.map((f) => (
+                      <tr key={f.id}>
+                        <td style={{ fontWeight: 700 }}>#{f.display_order}</td>
+                        <td style={{ fontWeight: 600 }}>{f.name}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                            <button
+                              onClick={() => {
+                                setEditingFloor(f);
+                                setFloorName(f.name);
+                                setFloorOrder(f.display_order);
+                              }}
+                              className="btn-secondary"
+                              style={{ padding: '4px 6px', fontSize: '11px' }}
+                              title="Edit Floor"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFloor(f.id, f.name)}
+                              className="btn-secondary"
+                              style={{ padding: '4px 6px', fontSize: '11px' }}
+                              title="Delete Floor"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -259,41 +299,42 @@ export const ManageRoomsView: React.FC = () => {
               {editingRoom ? `Edit Classroom ${editingRoom.room_number}` : 'Add New Classroom'}
             </h2>
             <form onSubmit={handleSaveClassroom}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div className="grid-2" style={{ marginBottom: '16px' }}>
                 <div>
                   <label>Room Number *</label>
                   <input
                     type="text"
                     placeholder="e.g. G-101, F-205"
                     value={roomNumber}
-                    onChange={(e) => setRoomNumber(e.target.value)}
+                    onChange={(e) => setRoomNumber(e.target.value.toUpperCase())}
                     required
+                    minLength={1}
+                    maxLength={20}
+                    pattern="^[a-zA-Z0-9_.-]+$"
+                    title="Room number alphanumeric e.g. G-101, F-205, 301"
                   />
+                  <div className="form-helper">Alphanumeric room code (1-20 chars)</div>
                 </div>
                 <div>
-                  <label>Capacity (Seats) *</label>
-                  <input
-                    type="number"
-                    value={capacity}
-                    onChange={(e) => setCapacity(Number(e.target.value))}
+                  <label>Assigned Floor *</label>
+                  <select
+                    value={classroomFloorId}
+                    onChange={(e) => setClassroomFloorId(e.target.value)}
                     required
-                  />
+                    disabled={floors.length === 0}
+                  >
+                    {floors.length === 0 ? (
+                      <option value="">No floors available - create a floor first</option>
+                    ) : (
+                      floors.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <div className="form-helper">Select building floor level</div>
                 </div>
-              </div>
-
-              <div style={{ marginBottom: '16px' }}>
-                <label>Assigned Floor *</label>
-                <select
-                  value={classroomFloorId}
-                  onChange={(e) => setClassroomFloorId(e.target.value)}
-                  required
-                >
-                  {floors.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -309,7 +350,7 @@ export const ManageRoomsView: React.FC = () => {
                     Cancel
                   </button>
                 )}
-                <button type="submit" className="btn-primary">
+                <button type="submit" className="btn-primary" disabled={floors.length === 0}>
                   <PlusCircle size={14} />
                   {editingRoom ? 'Update Classroom' : 'Create Classroom'}
                 </button>
@@ -322,40 +363,44 @@ export const ManageRoomsView: React.FC = () => {
             <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>
               Configured Classrooms ({classrooms.length})
             </h3>
-            <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+            <div className="table-responsive" style={{ maxHeight: '420px', overflowY: 'auto' }}>
               <table className="allocator-table">
                 <thead>
                   <tr>
                     <th>Room</th>
                     <th>Floor</th>
-                    <th>Seats</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {classrooms.map((c) => (
-                    <tr key={c.id}>
-                      <td style={{ fontWeight: 800 }}>{c.room_number}</td>
-                      <td>{c.floor?.name || 'Floor'}</td>
-                      <td>{c.capacity}</td>
-                      <td>
-                        <button
-                          onClick={() => handleToggleRoomStatus(c)}
-                          className={c.is_active ? 'badge-solid' : 'badge-outline'}
-                          style={{ border: 'none', cursor: 'pointer' }}
-                          title="Click to toggle active status"
-                        >
-                          {c.is_active ? 'ACTIVE' : 'INACTIVE'}
-                        </button>
+                  {classrooms.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', opacity: 0.6, padding: '24px 0' }}>
+                        No classrooms added yet.
                       </td>
+                    </tr>
+                  ) : (
+                    classrooms.map((c) => (
+                      <tr key={c.id}>
+                        <td style={{ fontWeight: 800 }}>{c.room_number}</td>
+                        <td>{c.floor?.name || 'Floor'}</td>
+                        <td>
+                          <button
+                            onClick={() => handleToggleRoomStatus(c)}
+                            className={c.is_active ? 'badge-solid' : 'badge-outline'}
+                            style={{ border: 'none', cursor: 'pointer' }}
+                            title="Click to toggle active status"
+                          >
+                            {c.is_active ? 'ACTIVE' : 'INACTIVE'}
+                          </button>
+                        </td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
                           <button
                             onClick={() => {
                               setEditingRoom(c);
                               setRoomNumber(c.room_number);
-                              setCapacity(c.capacity);
                               setClassroomFloorId(c.floor_id);
                             }}
                             className="btn-secondary"
@@ -375,8 +420,9 @@ export const ManageRoomsView: React.FC = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
+                  ))
+                )}
+              </tbody>
               </table>
             </div>
           </div>

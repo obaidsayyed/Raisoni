@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { FeedbackProvider } from './context/FeedbackContext';
 import { Navbar } from './layouts/Navbar';
+import { Sidebar } from './layouts/Sidebar';
 import { ClassroomsView } from './pages/ClassroomsView';
 import { TimetableView } from './pages/TimetableView';
 import { MyReservationsView } from './pages/MyReservationsView';
@@ -11,118 +13,133 @@ import { AdminAnalyticsView } from './pages/AdminAnalyticsView';
 import { AccountSecurityView } from './pages/AccountSecurityView';
 import { LoginModal } from './components/LoginModal';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
-import { getSupabaseConfigStatus, type SupabaseConfigStatus } from './lib/supabaseClient';
-import { Database } from 'lucide-react';
 
 const AppContent: React.FC = () => {
-  const { role, mustChangePassword } = useAuth();
+  const { role, mustChangePassword, loading } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('classrooms');
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
-  const [configStatus, setConfigStatus] = useState<SupabaseConfigStatus | null>(null);
-  const [showConfigNotice, setShowConfigNotice] = useState<boolean>(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sidebar_collapsed');
+    if (saved !== null) return saved === 'true';
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return true;
+    return false;
+  });
 
-  useEffect(() => {
-    const status = getSupabaseConfigStatus();
-    setConfigStatus(status);
-  }, []);
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('sidebar_collapsed', String(next));
+      return next;
+    });
+  };
+
+  // Ensure faculty cannot be on timetable tab
+  React.useEffect(() => {
+    if (role === 'faculty' && currentTab === 'timetable') {
+      setCurrentTab('classrooms');
+    }
+  }, [role, currentTab]);
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--color-white)',
+          color: 'var(--color-primary-dark)',
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '0.05em' }}>
+            RAISONI ROOM ALLOCATOR
+          </div>
+          <div style={{ fontSize: '13px', marginTop: '10px', color: 'var(--color-text-muted)' }}>
+            Restoring session...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Supabase Environment Configuration Notice (when in default template / local mode) */}
-      {configStatus && !configStatus.isConfigured && (
-        <div
-          style={{
-            borderBottom: '2px solid var(--color-purple)',
-            backgroundColor: 'var(--color-white)',
-            color: 'var(--color-purple)',
-            fontSize: '12px',
-          }}
-        >
-          <div
-            style={{
-              maxWidth: '1280px',
-              margin: '0 auto',
-              padding: '6px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Database size={14} />
-              <span>
-                <strong>SUPABASE CONFIGURATION STATUS:</strong> Running with verified local database engine ({configStatus.missingVariables.join(', ')} unset).
-              </span>
-            </div>
-            <button
-              onClick={() => setShowConfigNotice((prev) => !prev)}
-              className="btn-link"
-              style={{ fontSize: '11px', padding: 0 }}
-            >
-              {showConfigNotice ? 'Hide Setup Details' : 'Show Setup Details'}
-            </button>
-          </div>
-
-          {showConfigNotice && (
-            <div
-              style={{
-                maxWidth: '1280px',
-                margin: '0 auto',
-                padding: '10px 20px 14px',
-                borderTop: '1px solid var(--color-purple)',
-                fontSize: '12px',
-                lineHeight: 1.6,
-              }}
-            >
-              <p>
-                To connect to your cloud Supabase instance, update <code>.env.local</code> with your project's URL and Publishable Anon Key:
-              </p>
-              <pre
-                style={{
-                  padding: '6px 10px',
-                  border: '1px solid var(--color-purple)',
-                  borderRadius: '4px',
-                  margin: '6px 0',
-                  fontFamily: 'monospace',
-                  fontSize: '11px',
-                }}
-              >
-                VITE_SUPABASE_URL=https://your-project-id.supabase.co{'\n'}
-                VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
-              </pre>
-              <p style={{ opacity: 0.8 }}>
-                All database migrations are ready in <code>supabase/migrations/</code> and Edge Functions in <code>supabase/functions/</code>.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Main Navigation */}
+      {/* Main Top Header */}
       <Navbar
         currentTab={currentTab}
         onSelectTab={(tab) => setCurrentTab(tab)}
         onOpenLoginModal={() => setShowLoginModal(true)}
       />
 
-      {/* Main View Area */}
-      <main style={{ flex: 1, paddingBottom: '60px' }}>
-        {currentTab === 'classrooms' && (
-          <ClassroomsView onOpenLogin={() => setShowLoginModal(true)} />
-        )}
-        {currentTab === 'timetable' && <TimetableView />}
-        {currentTab === 'my-reservations' && role === 'faculty' && <MyReservationsView />}
-        {currentTab === 'all-reservations' && role === 'admin' && <AllReservationsView />}
-        {currentTab === 'manage-rooms' && role === 'admin' && <ManageRoomsView />}
-        {currentTab === 'manage-faculty' && role === 'admin' && <ManageFacultyView />}
-        {currentTab === 'analytics' && role === 'admin' && <AdminAnalyticsView />}
-        {currentTab === 'security' && <AccountSecurityView />}
-      </main>
+      {/* Main Container with Collapsible Sidebar */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        {/* Collapsible Sidebar for Options */}
+        <Sidebar
+          currentTab={currentTab}
+          onSelectTab={(tab) => setCurrentTab(tab)}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
+        />
+
+        {/* Content Area */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            minWidth: 0,
+            overflowY: 'auto',
+          }}
+        >
+          <main style={{ flex: 1, paddingBottom: '60px' }}>
+            {currentTab === 'classrooms' && (
+              <ClassroomsView onOpenLogin={() => setShowLoginModal(true)} />
+            )}
+            {currentTab === 'timetable' && role !== 'faculty' && <TimetableView />}
+            {currentTab === 'my-reservations' && role === 'faculty' && <MyReservationsView />}
+            {currentTab === 'all-reservations' && role === 'admin' && <AllReservationsView />}
+            {currentTab === 'manage-rooms' && role === 'admin' && <ManageRoomsView />}
+            {currentTab === 'manage-faculty' && role === 'admin' && <ManageFacultyView />}
+            {currentTab === 'analytics' && role === 'admin' && <AdminAnalyticsView />}
+            {currentTab === 'security' && <AccountSecurityView />}
+          </main>
+
+          {/* Clean Footer */}
+          <footer
+            style={{
+              borderTop: '1px solid var(--color-tint-border)',
+              backgroundColor: 'var(--color-white)',
+              padding: '20px',
+              textAlign: 'center',
+              fontSize: '12px',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '1280px',
+                margin: '0 auto',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '8px',
+              }}
+            >
+              <div>
+                <strong style={{ color: 'var(--color-primary-dark)' }}>RAISONI ROOM ALLOCATOR</strong>
+              </div>
+              <div style={{ color: 'var(--color-text-muted)' }}>
+                Classroom Allocation & Schedule System
+              </div>
+            </div>
+          </footer>
+        </div>
+      </div>
 
       {/* Forced Password Change Modal on Initial Login */}
-      {mustChangePassword && (
-        <PasswordChangeModal isForced={true} />
-      )}
+      {mustChangePassword && <PasswordChangeModal isForced={true} />}
 
       {/* Login Modal */}
       {showLoginModal && (
@@ -134,35 +151,17 @@ const AppContent: React.FC = () => {
           }}
         />
       )}
-
-      {/* Footer */}
-      <footer
-        style={{
-          borderTop: '2px solid var(--color-purple)',
-          backgroundColor: 'var(--color-white)',
-          padding: '20px',
-          textAlign: 'center',
-          fontSize: '12px',
-        }}
-      >
-        <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <div>
-            <strong>COLLEGE CLASSROOM ALLOCATOR</strong> — Secure Serverless Academic Scheduling
-          </div>
-          <div style={{ opacity: 0.8 }}>
-            Pure White (#FFFFFF) & Solid Purple (#5B21B6) Design System
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
 
 export function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <FeedbackProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </FeedbackProvider>
   );
 }
 

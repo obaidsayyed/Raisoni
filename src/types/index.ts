@@ -37,11 +37,12 @@ export interface TimetableEvent {
   classroom_id: string;
   subject: string;
   faculty_name: string;
-  day_of_week: number; // 1 = Mon, 7 = Sun
+  day_of_week: number; // 1 = Mon, 6 = Sat
   start_time: string; // HH:mm:ss or HH:mm
   end_time: string; // HH:mm:ss or HH:mm
   specific_date?: string | null; // YYYY-MM-DD
   semester: string;
+  section?: string;
   is_active: boolean;
   created_at?: string;
   classroom?: Classroom;
@@ -92,15 +93,23 @@ export interface AvailabilityResult {
   };
 }
 
+export interface MissingClassroomInfo {
+  room_number: string;
+  floor_name: string;
+}
+
 export interface TimetableImportRow {
   room_number: string;
+  floor_name?: string;
   subject: string;
   faculty_name: string;
   day_of_week: number;
   start_time: string;
   end_time: string;
+  section?: string;
   semester?: string;
   specific_date?: string;
   error?: string;
   conflictWithReservation?: Reservation;
 }
+

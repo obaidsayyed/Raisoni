@@ -14,9 +14,11 @@ import {
   XCircle,
   AlertTriangle,
 } from 'lucide-react';
+import { useFeedback } from '../context/FeedbackContext';
 
 export const MyReservationsView: React.FC = () => {
   const { user } = useAuth();
+  const { toast, confirm } = useFeedback();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,17 +42,26 @@ export const MyReservationsView: React.FC = () => {
     return () => unsub();
   }, [loadData]);
 
-  const handleCancel = async (id: string, roomNum: string) => {
+  const handleCancel = (id: string, roomNum: string) => {
     if (!user) return;
-    if (confirm(`Are you sure you want to cancel your reservation for room ${roomNum}?`)) {
-      try {
-        setError(null);
-        await cancelReservation(id, user.id, user.role === 'admin');
-        loadData();
-      } catch (err: any) {
-        setError(err.message || 'Failed to cancel reservation.');
-      }
-    }
+    confirm({
+      title: 'Cancel Schedule',
+      message: `Are you sure you want to cancel your reservation for room ${roomNum}?`,
+      confirmText: 'Cancel Schedule',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          setError(null);
+          await cancelReservation(id, user.id, user.role === 'admin');
+          toast.success(`Schedule for room ${roomNum} cancelled.`);
+          loadData();
+        } catch (err: any) {
+          const errMsg = err.message || 'Failed to cancel reservation.';
+          setError(errMsg);
+          toast.error(errMsg);
+        }
+      },
+    });
   };
 
   const now = new Date().toISOString();
@@ -65,13 +76,13 @@ export const MyReservationsView: React.FC = () => {
       : reservations;
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="page-container">
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '0.5px' }}>
           MY CLASSROOM RESERVATIONS
         </h1>
         <p style={{ opacity: 0.8, fontSize: '14px', marginTop: '4px' }}>
-          Track and manage your upcoming bookings and past academic reservation history
+          Track and manage your upcoming schedules and past academic reservation history
         </p>
       </div>
 
@@ -86,13 +97,13 @@ export const MyReservationsView: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('upcoming')}
           className={activeTab === 'upcoming' ? 'btn-primary' : 'btn-secondary'}
           style={{ padding: '6px 14px' }}
         >
-          Upcoming Bookings ({upcomingReservations.length})
+          Upcoming Schedules ({upcomingReservations.length})
         </button>
         <button
           onClick={() => setActiveTab('past')}
@@ -134,7 +145,7 @@ export const MyReservationsView: React.FC = () => {
             return (
               <div
                 key={r.id}
-                className="card"
+                className="card reservation-card"
                 style={{
                   borderWidth: '2px',
                   borderStyle: isConfirmed ? 'solid' : 'dashed',
@@ -152,7 +163,7 @@ export const MyReservationsView: React.FC = () => {
                 >
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '20px', fontWeight: 800 }}>
+                      <span className="reservation-card-room" style={{ fontSize: '20px', fontWeight: 800 }}>
                         {r.classroom?.room_number || 'Room'}
                       </span>
                       <span className="badge-outline">
@@ -196,7 +207,7 @@ export const MyReservationsView: React.FC = () => {
                       style={{ padding: '6px 12px', fontSize: '12px' }}
                     >
                       <XCircle size={14} />
-                      Cancel Booking
+                      Cancel Schedule
                     </button>
                   )}
                 </div>

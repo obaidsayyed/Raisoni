@@ -18,9 +18,11 @@ import {
   User,
   Building,
 } from 'lucide-react';
+import { useFeedback } from '../context/FeedbackContext';
 
 export const TimetableView: React.FC = () => {
   const { role } = useAuth();
+  const { toast, confirm } = useFeedback();
   const [events, setEvents] = useState<TimetableEvent[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [selectedDay, setSelectedDay] = useState<number>(0); // 0 = all days
@@ -52,15 +54,22 @@ export const TimetableView: React.FC = () => {
     return () => unsub();
   }, [loadData]);
 
-  const handleDelete = async (id: string, subject: string) => {
-    if (confirm(`Are you sure you want to remove lecture "${subject}" from the official timetable?`)) {
-      try {
-        await deleteTimetableEvent(id);
-        loadData();
-      } catch (err: any) {
-        alert(err.message || 'Failed to delete timetable event.');
-      }
-    }
+  const handleDelete = (id: string, subject: string) => {
+    confirm({
+      title: 'Remove Lecture',
+      message: `Are you sure you want to remove lecture "${subject}" from the official timetable?`,
+      confirmText: 'Remove Lecture',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteTimetableEvent(id);
+          toast.success(`Lecture "${subject}" removed from timetable.`);
+          loadData();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete timetable event.');
+        }
+      },
+    });
   };
 
   const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -72,7 +81,7 @@ export const TimetableView: React.FC = () => {
   });
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="page-container">
       {/* Header & Admin Actions */}
       <div
         style={{
@@ -114,8 +123,8 @@ export const TimetableView: React.FC = () => {
       </div>
 
       {/* Filters Bar */}
-      <div className="card" style={{ marginBottom: '20px', padding: '16px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+      <div className="card timetable-filter-card" style={{ marginBottom: '20px', padding: '16px' }}>
+        <div className="timetable-filter-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
           <div>
             <label style={{ marginBottom: '4px' }}>Day of Week</label>
             <select
@@ -123,14 +132,13 @@ export const TimetableView: React.FC = () => {
               onChange={(e) => setSelectedDay(Number(e.target.value))}
               style={{ minWidth: '160px' }}
             >
-              <option value={0}>All Days (Mon - Sun)</option>
+              <option value={0}>All Days (Mon - Sat)</option>
               <option value={1}>Monday</option>
               <option value={2}>Tuesday</option>
               <option value={3}>Wednesday</option>
               <option value={4}>Thursday</option>
               <option value={5}>Friday</option>
               <option value={6}>Saturday</option>
-              <option value={7}>Sunday</option>
             </select>
           </div>
 
@@ -170,7 +178,7 @@ export const TimetableView: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-responsive">
           <table className="allocator-table">
             <thead>
               <tr>
@@ -178,6 +186,7 @@ export const TimetableView: React.FC = () => {
                 <th>Time Slot</th>
                 <th>Classroom</th>
                 <th>Course / Subject</th>
+                <th>Section</th>
                 <th>Instructor / Faculty</th>
                 <th>Semester</th>
                 {role === 'admin' && <th style={{ textAlign: 'center' }}>Admin Action</th>}
@@ -190,16 +199,25 @@ export const TimetableView: React.FC = () => {
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Clock size={13} />
-                      {e.start_time} - {e.end_time}
+                      {e.start_time ? e.start_time.substring(0, 5) : ''} - {e.end_time ? e.end_time.substring(0, 5) : ''}
                     </div>
                   </td>
                   <td style={{ fontWeight: 700 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Building size={13} />
-                      {e.classroom?.room_number || 'Room'}
+                      {e.classroom?.room_number || classrooms.find((c) => c.id === e.classroom_id)?.room_number || 'Room'}
                     </div>
                   </td>
                   <td style={{ fontWeight: 600 }}>{e.subject}</td>
+                  <td>
+                    {e.section ? (
+                      <span className="badge-outline" style={{ fontWeight: 700, fontSize: '11px' }}>
+                        {e.section}
+                      </span>
+                    ) : (
+                      <span style={{ opacity: 0.5 }}>—</span>
+                    )}
+                  </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <User size={13} />

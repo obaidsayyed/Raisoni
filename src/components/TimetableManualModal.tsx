@@ -21,6 +21,7 @@ export const TimetableManualModal: React.FC<TimetableManualModalProps> = ({
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:30');
   const [semester, setSemester] = useState('Fall 2026');
+  const [section, setSection] = useState('');
   const [specificDate, setSpecificDate] = useState('');
   const [conflicts, setConflicts] = useState<Reservation[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +51,7 @@ export const TimetableManualModal: React.FC<TimetableManualModalProps> = ({
         start_time: startTime,
         end_time: endTime,
         semester: semester.trim(),
+        section: section.trim() || undefined,
         specific_date: specificDate ? specificDate : null,
         is_active: true,
       });
@@ -132,7 +134,7 @@ export const TimetableManualModal: React.FC<TimetableManualModalProps> = ({
             </select>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+          <div className="grid-2" style={{ marginBottom: '14px' }}>
             <div>
               <label>Course / Subject *</label>
               <input
@@ -141,7 +143,10 @@ export const TimetableManualModal: React.FC<TimetableManualModalProps> = ({
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="e.g. Distributed Systems"
                 required
+                minLength={2}
+                maxLength={80}
               />
+              <div className="form-helper">2 to 80 characters</div>
             </div>
             <div>
               <label>Instructor / Faculty *</label>
@@ -151,16 +156,20 @@ export const TimetableManualModal: React.FC<TimetableManualModalProps> = ({
                 onChange={(e) => setFacultyName(e.target.value)}
                 placeholder="e.g. Dr. Alan Turing"
                 required
+                minLength={2}
+                maxLength={80}
               />
+              <div className="form-helper">Faculty display name</div>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+          <div className="grid-3" style={{ marginBottom: '14px' }}>
             <div>
               <label>Day of Week *</label>
               <select
                 value={dayOfWeek}
                 onChange={(e) => setDayOfWeek(Number(e.target.value))}
+                required
               >
                 <option value={1}>Monday</option>
                 <option value={2}>Tuesday</option>
@@ -168,7 +177,6 @@ export const TimetableManualModal: React.FC<TimetableManualModalProps> = ({
                 <option value={4}>Thursday</option>
                 <option value={5}>Friday</option>
                 <option value={6}>Saturday</option>
-                <option value={7}>Sunday</option>
               </select>
             </div>
             <div>
@@ -191,17 +199,29 @@ export const TimetableManualModal: React.FC<TimetableManualModalProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+          <div className="grid-3" style={{ marginBottom: '20px' }}>
             <div>
-              <label>Semester / Term</label>
+              <label>Section / Batch (Optional)</label>
+              <input
+                type="text"
+                value={section}
+                onChange={(e) => setSection(e.target.value)}
+                placeholder="e.g. BCA A"
+                maxLength={30}
+              />
+            </div>
+            <div>
+              <label>Semester / Term (Optional)</label>
               <input
                 type="text"
                 value={semester}
                 onChange={(e) => setSemester(e.target.value)}
+                placeholder="e.g. Sem V, Fall 2024"
+                maxLength={30}
               />
             </div>
             <div>
-              <label>Specific Date Override (Optional)</label>
+              <label>Specific Date (Optional)</label>
               <input
                 type="date"
                 value={specificDate}

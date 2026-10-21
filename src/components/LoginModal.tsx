@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, X, KeyRound, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import { LogIn, X, KeyRound, User, AlertCircle } from 'lucide-react';
+import { PasswordInput } from './PasswordInput';
 
 interface LoginModalProps {
   onClose: () => void;
@@ -8,14 +9,13 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) => {
-  const { login, bootstrapAdmin } = useAuth();
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [bootstrapMsg, setBootstrapMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password) {
       setError('Please provide both username and password.');
@@ -25,7 +25,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) =>
     setLoading(true);
     setError(null);
     try {
-      await login(username, password);
+      await login(username.trim(), password);
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -35,103 +35,33 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) =>
     }
   };
 
-  const handleBootstrap = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await bootstrapAdmin();
-      setBootstrapMsg(res.message);
-      setUsername('Admin123');
-      setPassword('Admin@123');
-    } catch (err: any) {
-      setError(err.message || 'Failed to bootstrap administrator.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fillCredentials = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-  };
-
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <LogIn size={24} />
-            <h2 style={{ fontSize: '20px', fontWeight: 800 }}>SIGN IN TO ALLOCATOR</h2>
+            <LogIn size={22} />
+            <h2 style={{ fontSize: '18px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Sign In to Allocator
+            </h2>
           </div>
           <button onClick={onClose} className="btn-secondary" style={{ padding: '4px 8px' }}>
             <X size={16} />
           </button>
         </div>
 
-        {/* Informational Bootstrap Admin Box */}
-        <div
-          style={{
-            border: '2px solid var(--color-purple)',
-            padding: '14px',
-            borderRadius: '6px',
-            marginBottom: '16px',
-            backgroundColor: 'var(--color-white)',
-            fontSize: '13px',
-          }}
-        >
-          <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-            <KeyRound size={16} />
-            BUILT-IN ADMINISTRATOR BOOTSTRAP:
-          </div>
-          <div style={{ opacity: 0.9, marginBottom: '8px' }}>
-            Bootstrap Admin: <code>Admin123</code> / <code>Admin@123</code> (Enforces password change on first access).
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={handleBootstrap}
-              className="btn-secondary"
-              style={{ padding: '4px 8px', fontSize: '11px' }}
-              disabled={loading}
-            >
-              Provision / Verify Initial Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => fillCredentials('Admin123', 'Admin@123')}
-              className="btn-secondary"
-              style={{ padding: '4px 8px', fontSize: '11px' }}
-            >
-              Fill Admin Credentials
-            </button>
-            <button
-              type="button"
-              onClick={() => fillCredentials('prof.smith', 'Faculty@123')}
-              className="btn-secondary"
-              style={{ padding: '4px 8px', fontSize: '11px' }}
-            >
-              Fill Sample Faculty (prof.smith)
-            </button>
-          </div>
-        </div>
-
-        {bootstrapMsg && (
-          <div className="alert-box alert-outline" style={{ marginBottom: '14px' }}>
-            <CheckCircle2 size={18} />
-            <div style={{ fontSize: '13px' }}>{bootstrapMsg}</div>
-          </div>
-        )}
-
+        {/* Error Alert */}
         {error && (
-          <div className="alert-box alert-solid" style={{ marginBottom: '14px' }}>
+          <div className="alert-box alert-solid" style={{ marginBottom: '16px' }}>
             <AlertCircle size={18} />
             <div style={{ fontSize: '13px' }}>{error}</div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '14px' }}>
+        {/* SIGN IN FORM ONLY */}
+        <form onSubmit={handleSignIn}>
+          <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <User size={14} />
               Username
@@ -140,23 +70,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) =>
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. Admin123 or prof.smith"
+              placeholder="e.g. admin or eleanor.vance"
               autoFocus
               required
+              minLength={3}
+              maxLength={32}
+              pattern="^[a-zA-Z0-9_.-]+$"
+              title="Username must be 3-32 characters (letters, numbers, hyphens, dots, underscores)"
+              autoComplete="username"
+              spellCheck={false}
             />
+            <div className="form-helper">3 to 32 alphanumeric characters</div>
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <KeyRound size={14} />
               Password
             </label>
-            <input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Enter account password"
               required
+              minLength={6}
+              maxLength={64}
+              autoComplete="current-password"
             />
           </div>
 
@@ -174,7 +113,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) =>
               className="btn-primary"
               disabled={loading}
             >
-              {loading ? 'Authenticating...' : 'Sign In'}
+              {loading ? 'Signing In...' : 'Sign In'}
             </button>
           </div>
         </form>

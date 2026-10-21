@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { KeyRound, User, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { PasswordInput } from '../components/PasswordInput';
 
 export const AccountSecurityView: React.FC = () => {
   const { user, changeUsername, changePassword } = useAuth();
@@ -77,7 +78,7 @@ export const AccountSecurityView: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="page-container" style={{ maxWidth: '960px' }}>
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '0.5px' }}>
           ACCOUNT SECURITY & CREDENTIALS
@@ -87,7 +88,7 @@ export const AccountSecurityView: React.FC = () => {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+      <div className="responsive-split-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
         {/* Username Change Card */}
         <div className="card">
           <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -115,16 +116,22 @@ export const AccountSecurityView: React.FC = () => {
 
           <form onSubmit={handleUsernameChange}>
             <div style={{ marginBottom: '16px' }}>
-              <label>New Username (Unique, 3-32 chars)</label>
+              <label>New Username (Unique, 3-32 chars) *</label>
               <input
                 type="text"
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
                 placeholder="Enter new username"
                 required
+                minLength={3}
+                maxLength={32}
+                pattern="^[a-zA-Z0-9_.-]+$"
+                title="3 to 32 characters (letters, numbers, hyphens, dots, underscores)"
+                autoComplete="username"
+                spellCheck={false}
               />
-              <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '4px' }}>
-                Letters, numbers, hyphens, and underscores only. Uniqueness is enforced case-insensitively.
+              <div className="form-helper">
+                3 to 32 characters. Letters, numbers, hyphens, and underscores only.
               </div>
             </div>
 
@@ -158,34 +165,41 @@ export const AccountSecurityView: React.FC = () => {
           <form onSubmit={handlePasswordChange}>
             <div style={{ marginBottom: '14px' }}>
               <label>Current Password *</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={currentPass}
                 onChange={(e) => setCurrentPass(e.target.value)}
                 placeholder="Enter current password"
                 required
+                minLength={6}
+                maxLength={64}
+                autoComplete="current-password"
               />
             </div>
 
             <div style={{ marginBottom: '14px' }}>
               <label>New Password * (Min 8 characters)</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={newPass}
                 onChange={(e) => setNewPass(e.target.value)}
                 placeholder="Enter new strong password"
                 required
+                minLength={8}
+                maxLength={64}
+                autoComplete="new-password"
               />
+              <div className="form-helper">At least 8 characters long</div>
             </div>
 
             <div style={{ marginBottom: '18px' }}>
               <label>Confirm New Password *</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={confirmPass}
                 onChange={(e) => setConfirmPass(e.target.value)}
                 placeholder="Re-enter new password"
                 required
+                minLength={8}
+                maxLength={64}
+                autoComplete="new-password"
               />
             </div>
 

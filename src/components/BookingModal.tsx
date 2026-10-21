@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Classroom } from '../types';
-import { reserveClassroom } from '../services/storageEngine';
+import { reserveClassroom, isSlotInPast } from '../services/storageEngine';
 import { useAuth } from '../context/AuthContext';
 import {
   CalendarCheck,
@@ -9,10 +9,9 @@ import {
   CheckCircle2,
   Clock,
   Building,
-  Users,
 } from 'lucide-react';
 
-interface BookingModalProps {
+export interface ScheduleModalProps {
   classroom: Classroom;
   date: string;
   startTime: string;
@@ -21,7 +20,9 @@ interface BookingModalProps {
   onSuccess: () => void;
 }
 
-export const BookingModal: React.FC<BookingModalProps> = ({
+export type BookingModalProps = ScheduleModalProps;
+
+export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   classroom,
   date,
   startTime,
@@ -35,17 +36,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const isPastTime = isSlotInPast(date, startTime);
+
   const startIso = `${date}T${startTime}:00.000Z`;
   const endIso = `${date}T${endTime}:00.000Z`;
 
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPastTime) {
+      setError('Cannot book a classroom for a past date or time. Please select a future time slot.');
+      return;
+    }
     if (!user) {
       setError('You must be logged in to reserve a classroom.');
       return;
     }
     if (!purpose.trim()) {
-      setError('Please provide a purpose or activity title for this booking.');
+      setError('Please provide a purpose or activity title for this schedule.');
       return;
     }
 
@@ -60,7 +67,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         onClose();
       }, 1200);
     } catch (err: any) {
-      setError(err.message || 'Failed to complete reservation. Room may have just been booked.');
+      setError(err.message || 'Failed to complete reservation. Room may have just been scheduled.');
     } finally {
       setLoading(false);
     }
@@ -87,28 +94,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         {/* Room & Time Summary Box */}
         <div
           style={{
-            border: '2px solid var(--color-purple)',
+            border: '1px solid var(--color-tint-border)',
             padding: '16px',
-            borderRadius: '6px',
+            borderRadius: 'var(--border-radius)',
             marginBottom: '20px',
-            backgroundColor: 'var(--color-white)',
+            backgroundColor: 'var(--color-tint-subtle)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
-              <div style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.8, fontWeight: 700 }}>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700 }}>
                 Selected Room
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800 }}>{classroom.room_number}</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-primary-dark)' }}>{classroom.room_number}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
-                <Building size={14} />
+                <Building size={14} color="var(--color-accent)" />
                 <span>{classroom.floor?.name || 'Main Floor'}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', marginTop: '4px' }}>
-                <Users size={14} />
-                <span>Capacity: {classroom.capacity} seats</span>
               </div>
             </div>
           </div>
@@ -116,7 +119,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           <div
             style={{
               paddingTop: '10px',
-              borderTop: '1px solid var(--color-purple)',
+              borderTop: '1px solid var(--color-tint-border)',
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
@@ -131,8 +134,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           </div>
         </div>
 
+        {/* Past Time Warning */}
+        {isPastTime && (
+          <div className="alert-box alert-solid" style={{ marginBottom: '16px' }}>
+            <AlertCircle size={20} />
+            <div>
+              <div style={{ fontWeight: 700 }}>Past Time Slot</div>
+              <div style={{ fontSize: '13px' }}>
+                You cannot book a classroom for a time slot that has already passed. Please select a future time.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Status Messages */}
-        {error && (
+        {error && !isPastTime && (
           <div className="alert-box alert-solid" style={{ marginBottom: '16px' }}>
             <AlertCircle size={20} />
             <div>
@@ -146,24 +162,36 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           <div className="alert-box alert-outline" style={{ marginBottom: '16px' }}>
             <CheckCircle2 size={20} />
             <div>
-              <div style={{ fontWeight: 700 }}>Booking Confirmed!</div>
+              <div style={{ fontWeight: 700 }}>Schedule Confirmed!</div>
               <div style={{ fontSize: '13px' }}>Classroom {classroom.room_number} has been allocated to you.</div>
             </div>
           </div>
         )}
 
-        {/* Booking Form */}
+        {/* Schedule Form */}
         <form onSubmit={handleConfirm}>
           <div style={{ marginBottom: '20px' }}>
-            <label>Purpose / Academic Activity Description *</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ margin: 0 }}>Purpose / Academic Activity Description *</label>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                {purpose.length}/250 (min 5)
+              </span>
+            </div>
             <textarea
               rows={3}
               placeholder="e.g., Make-up Lecture for CS-204, Seminar on Distributed Systems, Faculty Committee Meeting"
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              disabled={loading || success}
+              disabled={loading || success || isPastTime}
               required
+              minLength={5}
+              maxLength={250}
             />
+            <div className="form-helper">
+              {isPastTime
+                ? 'Booking is disabled for time slots that have already passed.'
+                : 'Provide a descriptive purpose (5 to 250 characters)'}
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
@@ -178,9 +206,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <button
               type="submit"
               className="btn-primary"
-              disabled={loading || success}
+              disabled={loading || success || isPastTime}
+              style={isPastTime ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
             >
-              {loading ? 'Validating & Booking...' : 'Confirm Reservation'}
+              {loading ? 'Validating & Scheduling...' : isPastTime ? 'Time Slot Passed' : 'Confirm Schedule'}
             </button>
           </div>
         </form>
@@ -188,3 +217,5 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     </div>
   );
 };
+
+export const BookingModal = ScheduleModal;

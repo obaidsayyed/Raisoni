@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS public.floors (
 CREATE TABLE IF NOT EXISTS public.classrooms (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     room_number TEXT NOT NULL UNIQUE,
-    floor_id UUID NOT NULL REFERENCES public.floors(id) ON DELETE RESTRICT,
+    floor_id UUID NOT NULL REFERENCES public.floors(id) ON DELETE CASCADE ON UPDATE CASCADE,
     capacity INT NOT NULL DEFAULT 40,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
@@ -65,10 +65,19 @@ CREATE TABLE IF NOT EXISTS public.classrooms (
 );
 CREATE INDEX IF NOT EXISTS idx_classrooms_floor_id ON public.classrooms(floor_id);
 
+ALTER TABLE public.classrooms 
+DROP CONSTRAINT IF EXISTS classrooms_floor_id_fkey;
+
+ALTER TABLE public.classrooms 
+ADD CONSTRAINT classrooms_floor_id_fkey 
+FOREIGN KEY (floor_id) REFERENCES public.floors(id) 
+ON DELETE CASCADE 
+ON UPDATE CASCADE;
+
 -- 7. Timetable Events Table (Official College Timetable)
 CREATE TABLE IF NOT EXISTS public.timetable_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    classroom_id UUID NOT NULL REFERENCES public.classrooms(id) ON DELETE RESTRICT,
+    classroom_id UUID NOT NULL REFERENCES public.classrooms(id) ON DELETE CASCADE ON UPDATE CASCADE,
     subject TEXT NOT NULL,
     faculty_name TEXT NOT NULL,
     day_of_week INT NOT NULL CHECK (day_of_week BETWEEN 1 AND 7), -- 1 = Monday, 7 = Sunday
@@ -84,11 +93,20 @@ CREATE TABLE IF NOT EXISTS public.timetable_events (
 CREATE INDEX IF NOT EXISTS idx_timetable_classroom_day ON public.timetable_events(classroom_id, day_of_week);
 CREATE INDEX IF NOT EXISTS idx_timetable_specific_date ON public.timetable_events(specific_date);
 
+ALTER TABLE public.timetable_events 
+DROP CONSTRAINT IF EXISTS timetable_events_classroom_id_fkey;
+
+ALTER TABLE public.timetable_events 
+ADD CONSTRAINT timetable_events_classroom_id_fkey 
+FOREIGN KEY (classroom_id) REFERENCES public.classrooms(id) 
+ON DELETE CASCADE 
+ON UPDATE CASCADE;
+
 -- 8. Reservations Table (Faculty Classroom Bookings)
 CREATE TABLE IF NOT EXISTS public.reservations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    classroom_id UUID NOT NULL REFERENCES public.classrooms(id) ON DELETE RESTRICT,
-    faculty_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    classroom_id UUID NOT NULL REFERENCES public.classrooms(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    faculty_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE ON UPDATE CASCADE,
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
     purpose TEXT NOT NULL DEFAULT 'Academic / Faculty Activity',
@@ -97,6 +115,15 @@ CREATE TABLE IF NOT EXISTS public.reservations (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
     CONSTRAINT chk_reservation_times CHECK (end_time > start_time)
 );
+
+ALTER TABLE public.reservations 
+DROP CONSTRAINT IF EXISTS reservations_classroom_id_fkey;
+
+ALTER TABLE public.reservations 
+ADD CONSTRAINT reservations_classroom_id_fkey 
+FOREIGN KEY (classroom_id) REFERENCES public.classrooms(id) 
+ON DELETE CASCADE 
+ON UPDATE CASCADE;
 
 -- Database-level exclusion constraint preventing overlapping active reservations for the same classroom
 ALTER TABLE public.reservations 
@@ -159,11 +186,13 @@ $$;
 
 -- PROFILES:
 -- Public / Reader can see faculty display names and IDs (for reservation attributing)
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone" 
 ON public.profiles FOR SELECT 
 USING (true);
 
 -- Users can update only their own profile (and cannot change role or status)
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile" 
 ON public.profiles FOR UPDATE 
 USING (auth.uid() = id)
@@ -174,56 +203,66 @@ WITH CHECK (
 );
 
 -- Admin has full access to profiles
+DROP POLICY IF EXISTS "Admins have full access to profiles" ON public.profiles;
 CREATE POLICY "Admins have full access to profiles" 
 ON public.profiles FOR ALL 
 USING (public.is_admin());
 
 -- AUTH_USERNAME_LOOKUP:
 -- Only service_role can access username lookup directly
+DROP POLICY IF EXISTS "Private auth lookup service access only" ON public.auth_username_lookup;
 CREATE POLICY "Private auth lookup service access only"
 ON public.auth_username_lookup FOR ALL
 USING (auth.jwt() ->> 'role' = 'service_role');
 
 -- FLOORS:
 -- Public can view floors
+DROP POLICY IF EXISTS "Floors viewable by everyone" ON public.floors;
 CREATE POLICY "Floors viewable by everyone" 
 ON public.floors FOR SELECT 
 USING (true);
 
 -- Admins can manage floors
+DROP POLICY IF EXISTS "Admins can manage floors" ON public.floors;
 CREATE POLICY "Admins can manage floors" 
 ON public.floors FOR ALL 
 USING (public.is_admin());
 
 -- CLASSROOMS:
 -- Public can view active classrooms (Admins can view all)
+DROP POLICY IF EXISTS "Classrooms viewable by everyone" ON public.classrooms;
 CREATE POLICY "Classrooms viewable by everyone" 
 ON public.classrooms FOR SELECT 
 USING (is_active = true OR public.is_admin());
 
 -- Admins can manage classrooms
+DROP POLICY IF EXISTS "Admins can manage classrooms" ON public.classrooms;
 CREATE POLICY "Admins can manage classrooms" 
 ON public.classrooms FOR ALL 
 USING (public.is_admin());
 
 -- TIMETABLE_EVENTS:
 -- Public can view active timetable events
+DROP POLICY IF EXISTS "Timetable events viewable by everyone" ON public.timetable_events;
 CREATE POLICY "Timetable events viewable by everyone" 
 ON public.timetable_events FOR SELECT 
 USING (is_active = true OR public.is_admin());
 
 -- Admins can manage timetable events
+DROP POLICY IF EXISTS "Admins can manage timetable events" ON public.timetable_events;
 CREATE POLICY "Admins can manage timetable events" 
 ON public.timetable_events FOR ALL 
 USING (public.is_admin());
 
 -- RESERVATIONS:
 -- Confirmed reservations viewable by everyone (for Reader & Faculty schedule view)
+DROP POLICY IF EXISTS "Reservations viewable by everyone" ON public.reservations;
 CREATE POLICY "Reservations viewable by everyone" 
 ON public.reservations FOR SELECT 
 USING (true);
 
 -- Faculty can insert reservations (only their own UID, status confirmed)
+DROP POLICY IF EXISTS "Faculty can insert own reservations" ON public.reservations;
 CREATE POLICY "Faculty can insert own reservations" 
 ON public.reservations FOR INSERT 
 WITH CHECK (
@@ -232,22 +271,26 @@ WITH CHECK (
 );
 
 -- Faculty can cancel their own reservations
+DROP POLICY IF EXISTS "Faculty can update own reservations" ON public.reservations;
 CREATE POLICY "Faculty can update own reservations" 
 ON public.reservations FOR UPDATE 
 USING (auth.uid() = faculty_id OR public.is_admin())
 WITH CHECK (auth.uid() = faculty_id OR public.is_admin());
 
 -- Admins can delete or manage any reservation
+DROP POLICY IF EXISTS "Admins can manage all reservations" ON public.reservations;
 CREATE POLICY "Admins can manage all reservations" 
 ON public.reservations FOR ALL 
 USING (public.is_admin());
 
 -- AUDIT LOGS:
 -- Admin-only viewable
+DROP POLICY IF EXISTS "Admins can view audit logs" ON public.audit_logs;
 CREATE POLICY "Admins can view audit logs" 
 ON public.audit_logs FOR SELECT 
 USING (public.is_admin());
 
+DROP POLICY IF EXISTS "Authenticated users can insert audit logs" ON public.audit_logs;
 CREATE POLICY "Authenticated users can insert audit logs" 
 ON public.audit_logs FOR INSERT 
 WITH CHECK (auth.uid() IS NOT NULL);
@@ -594,27 +637,3 @@ BEGIN
       AND p_end_time > (r.start_time AT TIME ZONE 'UTC')::TIME;
 END;
 $$;
-
--- Seed initial default floors and classrooms if table is empty
-DO $$
-DECLARE
-    v_floor_1 UUID;
-    v_floor_2 UUID;
-    v_floor_3 UUID;
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM public.floors LIMIT 1) THEN
-        INSERT INTO public.floors (name, display_order) VALUES ('Ground Floor', 1) RETURNING id INTO v_floor_1;
-        INSERT INTO public.floors (name, display_order) VALUES ('First Floor', 2) RETURNING id INTO v_floor_2;
-        INSERT INTO public.floors (name, display_order) VALUES ('Second Floor', 3) RETURNING id INTO v_floor_3;
-
-        INSERT INTO public.classrooms (room_number, floor_id, capacity, is_active) VALUES
-            ('G-101', v_floor_1, 60, true),
-            ('G-102', v_floor_1, 45, true),
-            ('G-103', v_floor_1, 50, true),
-            ('F-201', v_floor_2, 60, true),
-            ('F-202', v_floor_2, 40, true),
-            ('F-203', v_floor_2, 75, true),
-            ('S-301', v_floor_3, 50, true),
-            ('S-302', v_floor_3, 50, true);
-    END IF;
-END $$;

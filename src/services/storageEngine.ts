@@ -8,6 +8,7 @@ import type {
   AuditLog,
   AvailabilityResult,
   TimetableImportRow,
+  MissingClassroomInfo,
 } from '../types';
 
 // Realtime sync channel for in-browser / cross-tab broadcast
@@ -104,115 +105,43 @@ function setLocal<T>(key: string, value: T): void {
 
 // Initial Database Seeding for Local Mode
 export function initializeLocalDatabase(): void {
-  const floors = getLocal<Floor[]>(KEYS.FLOORS, []);
-  if (floors.length === 0) {
-    const defaultFloors: Floor[] = [
-      { id: 'fl-1', name: 'Ground Floor', display_order: 1, created_at: new Date().toISOString() },
-      { id: 'fl-2', name: 'First Floor', display_order: 2, created_at: new Date().toISOString() },
-      { id: 'fl-3', name: 'Second Floor', display_order: 3, created_at: new Date().toISOString() },
-    ];
-    setLocal(KEYS.FLOORS, defaultFloors);
+  // Ensure database stores exist dynamically without hardcoding any floors or classrooms
+  if (localStorage.getItem(KEYS.FLOORS) === null) {
+    setLocal(KEYS.FLOORS, []);
+  }
+  if (localStorage.getItem(KEYS.CLASSROOMS) === null) {
+    setLocal(KEYS.CLASSROOMS, []);
+  }
+  if (localStorage.getItem(KEYS.TIMETABLE) === null) {
+    setLocal(KEYS.TIMETABLE, []);
+  }
+  if (localStorage.getItem(KEYS.RESERVATIONS) === null) {
+    setLocal(KEYS.RESERVATIONS, []);
+  }
+  if (localStorage.getItem(KEYS.PROFILES) === null) {
+    setLocal(KEYS.PROFILES, []);
+  }
+  if (localStorage.getItem(KEYS.PASSWORDS) === null) {
+    setLocal(KEYS.PASSWORDS, {});
+  }
 
-    const defaultClassrooms: Classroom[] = [
-      { id: 'cr-101', room_number: 'G-101', floor_id: 'fl-1', capacity: 60, is_active: true },
-      { id: 'cr-102', room_number: 'G-102', floor_id: 'fl-1', capacity: 45, is_active: true },
-      { id: 'cr-103', room_number: 'G-103', floor_id: 'fl-1', capacity: 50, is_active: true },
-      { id: 'cr-201', room_number: 'F-201', floor_id: 'fl-2', capacity: 60, is_active: true },
-      { id: 'cr-202', room_number: 'F-202', floor_id: 'fl-2', capacity: 40, is_active: true },
-      { id: 'cr-203', room_number: 'F-203', floor_id: 'fl-2', capacity: 75, is_active: true },
-      { id: 'cr-301', room_number: 'S-301', floor_id: 'fl-3', capacity: 50, is_active: true },
-      { id: 'cr-302', room_number: 'S-302', floor_id: 'fl-3', capacity: 55, is_active: true },
-    ];
-    setLocal(KEYS.CLASSROOMS, defaultClassrooms);
-
-    // Default official timetable events (Mon-Fri lectures)
-    const defaultTimetable: TimetableEvent[] = [
-      {
-        id: 'tt-1',
-        classroom_id: 'cr-101',
-        subject: 'Data Structures & Algorithms',
-        faculty_name: 'Dr. Robert Lang',
-        day_of_week: 1, // Mon
-        start_time: '09:00',
-        end_time: '10:30',
-        semester: 'Semester 3',
-        is_active: true,
-      },
-      {
-        id: 'tt-2',
-        classroom_id: 'cr-101',
-        subject: 'Database Management Systems',
-        faculty_name: 'Prof. Sarah Jenkins',
-        day_of_week: 1, // Mon
-        start_time: '11:00',
-        end_time: '12:30',
-        semester: 'Semester 3',
-        is_active: true,
-      },
-      {
-        id: 'tt-3',
-        classroom_id: 'cr-201',
-        subject: 'Operating Systems Architecture',
-        faculty_name: 'Dr. Michael Chang',
-        day_of_week: 2, // Tue
-        start_time: '10:00',
-        end_time: '11:30',
-        semester: 'Semester 5',
-        is_active: true,
-      },
-      {
-        id: 'tt-4',
-        classroom_id: 'cr-202',
-        subject: 'Computer Networks',
-        faculty_name: 'Prof. Anita Sharma',
-        day_of_week: 3, // Wed
-        start_time: '14:00',
-        end_time: '15:30',
-        semester: 'Semester 5',
-        is_active: true,
-      },
-      {
-        id: 'tt-5',
-        classroom_id: 'cr-301',
-        subject: 'Artificial Intelligence & Robotics',
-        faculty_name: 'Dr. David Vance',
-        day_of_week: 4, // Thu
-        start_time: '09:30',
-        end_time: '11:00',
-        semester: 'Semester 7',
-        is_active: true,
-      },
-    ];
-    setLocal(KEYS.TIMETABLE, defaultTimetable);
-
-    // Initial faculty accounts for testing
-    const defaultProfiles: Profile[] = [
-      {
-        id: 'fac-1',
-        username: 'prof.smith',
-        full_name: 'Prof. John Smith',
-        role: 'faculty',
-        status: 'active',
-        must_change_password: false,
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 'fac-2',
-        username: 'dr.watson',
-        full_name: 'Dr. Clara Watson',
-        role: 'faculty',
-        status: 'active',
-        must_change_password: false,
-        created_at: new Date().toISOString(),
-      },
-    ];
-    setLocal(KEYS.PROFILES, defaultProfiles);
-
-    const defaultPasswords: Record<string, string> = {
-      'prof.smith': 'Faculty@123',
-      'dr.watson': 'Faculty@123',
-    };
-    setLocal(KEYS.PASSWORDS, defaultPasswords);
+  // Sanitize any residual demo accounts from previous storage
+  try {
+    const existingProfiles = getLocal<Profile[]>(KEYS.PROFILES, []);
+    const filteredProfiles = existingProfiles.filter(
+      (p) => p.username !== 'prof.smith' && p.username !== 'dr.watson'
+    );
+    if (filteredProfiles.length !== existingProfiles.length) {
+      setLocal(KEYS.PROFILES, filteredProfiles);
+    }
+    const existingPasswords = getLocal<Record<string, string>>(KEYS.PASSWORDS, {});
+    if (existingPasswords['prof.smith'] || existingPasswords['dr.watson']) {
+      delete existingPasswords['prof.smith'];
+      delete existingPasswords['dr.watson'];
+      setLocal(KEYS.PASSWORDS, existingPasswords);
+    }
+  } catch (e) {
+    // ignore
   }
 }
 
@@ -621,6 +550,46 @@ export async function toggleFacultyStatus(
   });
 }
 
+export async function deleteFacultyAccount(facultyId: string): Promise<void> {
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    // 1. Remove reservations made by this faculty so foreign key restrictions are satisfied
+    await supabase.from('reservations').delete().eq('faculty_id', facultyId);
+    // 2. Delete the profile record
+    const { error } = await supabase.from('profiles').delete().eq('id', facultyId);
+    if (error) {
+      throw new Error(error.message);
+    }
+    broadcastChange('profiles', 'DELETE', { id: facultyId });
+    return;
+  }
+
+  let profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
+  const faculty = profiles.find((p) => p.id === facultyId);
+  if (!faculty) throw new Error('Faculty member not found.');
+
+  // Remove profile
+  profiles = profiles.filter((p) => p.id !== facultyId);
+  setLocal(KEYS.PROFILES, profiles);
+
+  // Remove any reservations made by this faculty
+  let reservations = getLocal<Reservation[]>(KEYS.RESERVATIONS, []);
+  reservations = reservations.filter((r) => r.faculty_id !== facultyId);
+  setLocal(KEYS.RESERVATIONS, reservations);
+
+  // Clean stored password
+  const passwords = getLocal<Record<string, string>>(KEYS.PASSWORDS, {});
+  delete passwords[faculty.username.toLowerCase()];
+  setLocal(KEYS.PASSWORDS, passwords);
+
+  logAudit({
+    action: 'DELETE_FACULTY',
+    entity_type: 'profile',
+    entity_id: facultyId,
+    details: { username: faculty.username, full_name: faculty.full_name },
+  });
+}
+
 // --------------------------------------------------------------------------------
 // 4. FLOORS & CLASSROOMS CRUD
 // --------------------------------------------------------------------------------
@@ -628,7 +597,7 @@ export async function getFloors(): Promise<Floor[]> {
   const config = getSupabaseConfigStatus();
   if (config.isConfigured) {
     const { data, error } = await supabase.from('floors').select('*').order('display_order');
-    if (!error && data && data.length > 0) return data as Floor[];
+    if (!error && data) return data as Floor[];
   }
   const floors = getLocal<Floor[]>(KEYS.FLOORS, []);
   return floors.sort((a, b) => a.display_order - b.display_order);
@@ -646,6 +615,11 @@ export async function createFloor(name: string, displayOrder: number): Promise<F
       .select()
       .single();
     if (error) throw new Error(error.message);
+    const floors = getLocal<Floor[]>(KEYS.FLOORS, []);
+    const idx = floors.findIndex((f) => f.id === data.id);
+    if (idx >= 0) floors[idx] = data as Floor;
+    else floors.push(data as Floor);
+    setLocal(KEYS.FLOORS, floors);
     broadcastChange('floors', 'INSERT', data);
     return data as Floor;
   }
@@ -706,21 +680,69 @@ export async function updateFloor(id: string, name: string, displayOrder: number
 export async function deleteFloor(id: string): Promise<void> {
   const config = getSupabaseConfigStatus();
   if (config.isConfigured) {
+    // Retrieve associated classrooms on this floor for cascade broadcast and robust cleanup
+    const { data: roomRows } = await supabase
+      .from('classrooms')
+      .select('id')
+      .eq('floor_id', id);
+    const roomIds = (roomRows || []).map((r: { id: string }) => r.id);
+
+    // Delete floor - PostgreSQL foreign keys (ON DELETE CASCADE) cascade to classrooms & schedules
     const { error } = await supabase.from('floors').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+    if (error) {
+      // In case database triggers or un-migrated tables require manual cascade fallback:
+      if (
+        error.code === '23503' ||
+        error.message?.includes('classrooms_floor_id_fkey') ||
+        error.message?.includes('violates foreign key constraint')
+      ) {
+        if (roomIds.length > 0) {
+          await supabase.from('reservations').delete().in('classroom_id', roomIds);
+          await supabase.from('timetable_events').delete().in('classroom_id', roomIds);
+          await supabase.from('classrooms').delete().in('id', roomIds);
+        }
+        const { error: retryErr } = await supabase.from('floors').delete().eq('id', id);
+        if (retryErr) throw new Error(retryErr.message);
+      } else {
+        throw new Error(error.message);
+      }
+    }
+
     broadcastChange('floors', 'DELETE', { id });
+    roomIds.forEach((rid) => {
+      broadcastChange('classrooms', 'DELETE', { id: rid });
+      broadcastChange('timetable_events', 'DELETE', { classroom_id: rid });
+      broadcastChange('reservations', 'DELETE', { classroom_id: rid });
+    });
     return;
   }
 
+  // Local storage mode: cascade delete all classrooms, timetable events, and reservations for this floor
   const classrooms = getLocal<Classroom[]>(KEYS.CLASSROOMS, []);
-  if (classrooms.some((c) => c.floor_id === id)) {
-    throw new Error('Cannot delete floor that still has assigned classrooms.');
-  }
+  const floorClassrooms = classrooms.filter((c) => c.floor_id === id);
+  const roomIds = new Set(floorClassrooms.map((c) => c.id));
+
+  let timetable = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
+  timetable = timetable.filter((t) => !roomIds.has(t.classroom_id));
+  setLocal(KEYS.TIMETABLE, timetable);
+
+  let reservations = getLocal<Reservation[]>(KEYS.RESERVATIONS, []);
+  reservations = reservations.filter((r) => !roomIds.has(r.classroom_id));
+  setLocal(KEYS.RESERVATIONS, reservations);
+
+  const remainingClassrooms = classrooms.filter((c) => c.floor_id !== id);
+  setLocal(KEYS.CLASSROOMS, remainingClassrooms);
 
   let floors = getLocal<Floor[]>(KEYS.FLOORS, []);
   floors = floors.filter((f) => f.id !== id);
   setLocal(KEYS.FLOORS, floors);
+
   broadcastChange('floors', 'DELETE', { id });
+  roomIds.forEach((rid) => {
+    broadcastChange('classrooms', 'DELETE', { id: rid });
+    broadcastChange('timetable_events', 'DELETE', { classroom_id: rid });
+    broadcastChange('reservations', 'DELETE', { classroom_id: rid });
+  });
 }
 
 export async function getClassrooms(): Promise<Classroom[]> {
@@ -730,7 +752,7 @@ export async function getClassrooms(): Promise<Classroom[]> {
       .from('classrooms')
       .select('*, floor:floors(*)')
       .order('room_number');
-    if (!error && data && data.length > 0) return data as Classroom[];
+    if (!error && data) return data as Classroom[];
   }
 
   const classrooms = getLocal<Classroom[]>(KEYS.CLASSROOMS, []);
@@ -748,7 +770,7 @@ export async function getClassrooms(): Promise<Classroom[]> {
 export async function createClassroom(
   roomNumber: string,
   floorId: string,
-  capacity: number
+  capacity: number = 40
 ): Promise<Classroom> {
   const cleanNumber = roomNumber.trim().toUpperCase();
   if (!cleanNumber) throw new Error('Room number is required.');
@@ -761,6 +783,11 @@ export async function createClassroom(
       .select('*, floor:floors(*)')
       .single();
     if (error) throw new Error(error.message);
+    const classrooms = getLocal<Classroom[]>(KEYS.CLASSROOMS, []);
+    const idx = classrooms.findIndex((c) => c.id === data.id);
+    if (idx >= 0) classrooms[idx] = data as Classroom;
+    else classrooms.push(data as Classroom);
+    setLocal(KEYS.CLASSROOMS, classrooms);
     broadcastChange('classrooms', 'INSERT', data);
     return data as Classroom;
   }
@@ -828,28 +855,330 @@ export async function deleteClassroom(id: string): Promise<void> {
   const config = getSupabaseConfigStatus();
   if (config.isConfigured) {
     const { error } = await supabase.from('classrooms').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (
+        error.code === '23503' ||
+        error.message?.includes('violates foreign key constraint')
+      ) {
+        // Fallback: manually delete dependent reservations & timetable events then classroom
+        await supabase.from('reservations').delete().eq('classroom_id', id);
+        await supabase.from('timetable_events').delete().eq('classroom_id', id);
+        const { error: retryErr } = await supabase.from('classrooms').delete().eq('id', id);
+        if (retryErr) throw new Error(retryErr.message);
+      } else {
+        throw new Error(error.message);
+      }
+    }
     broadcastChange('classrooms', 'DELETE', { id });
+    broadcastChange('timetable_events', 'DELETE', { classroom_id: id });
+    broadcastChange('reservations', 'DELETE', { classroom_id: id });
     return;
   }
 
-  const timetable = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
-  const reservations = getLocal<Reservation[]>(KEYS.RESERVATIONS, []);
+  // Local storage mode: cascade delete timetable events and reservations
+  let timetable = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
+  timetable = timetable.filter((t) => t.classroom_id !== id);
+  setLocal(KEYS.TIMETABLE, timetable);
 
-  const hasTimetable = timetable.some((t) => t.classroom_id === id);
-  const hasReservations = reservations.some((r) => r.classroom_id === id);
-
-  if (hasTimetable || hasReservations) {
-    throw new Error(
-      'Cannot delete classroom with existing timetable schedules or reservation history. Please deactivate it instead.'
-    );
-  }
+  let reservations = getLocal<Reservation[]>(KEYS.RESERVATIONS, []);
+  reservations = reservations.filter((r) => r.classroom_id !== id);
+  setLocal(KEYS.RESERVATIONS, reservations);
 
   let classrooms = getLocal<Classroom[]>(KEYS.CLASSROOMS, []);
   classrooms = classrooms.filter((c) => c.id !== id);
   setLocal(KEYS.CLASSROOMS, classrooms);
+
   broadcastChange('classrooms', 'DELETE', { id });
+  broadcastChange('timetable_events', 'DELETE', { classroom_id: id });
+  broadcastChange('reservations', 'DELETE', { classroom_id: id });
 }
+
+// --------------------------------------------------------------------------------
+// 4b. TIMETABLE FLOOR & CLASSROOM AUTO-CREATION LOGIC
+// Logic:
+// - Classroom numbers starting with 1 (e.g. 101, 102, 105) -> First Floor (order 1)
+// - Classroom numbers starting with 2 (e.g. 201, 202, 203) -> Second Floor (order 2)
+// - Classroom numbers starting with 3 -> Third Floor (order 3)
+// - Classroom numbers starting with 4 -> Fourth Floor (order 4)
+// - Classroom numbers starting with 5 -> Fifth Floor (order 5), etc.
+// - Classroom numbers starting with '0' or 'G' -> Ground Floor (order 0)
+// --------------------------------------------------------------------------------
+// 4b. TIMETABLE FLOOR & CLASSROOM AUTO-CREATION LOGIC
+// Floor is taken directly from the CSV row floor column or input specification.
+// Room number prefix logic (e.g. 2xx -> 2nd floor, 3xx -> 3rd floor) has been removed!
+// --------------------------------------------------------------------------------
+
+export function determineFloorForRoomNumber(_roomNumber?: string, explicitFloor?: string): { floorName: string; displayOrder: number } {
+  if (explicitFloor && explicitFloor.trim()) {
+    return { floorName: explicitFloor.trim(), displayOrder: 1 };
+  }
+  return { floorName: 'Main Floor', displayOrder: 1 };
+}
+
+export function findMatchingFloor(
+  floors: Floor[],
+  floorName: string,
+  displayOrder?: number
+): Floor | undefined {
+  const normTarget = floorName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!normTarget) return floors[0];
+
+  // 1. Exact or normalized name match
+  const byName = floors.find((f) => {
+    const fn = f.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    return fn === normTarget;
+  });
+  if (byName) return byName;
+
+  // 2. Contains match
+  const byContains = floors.find((f) => {
+    const fn = f.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    return fn.includes(normTarget) || normTarget.includes(fn);
+  });
+  if (byContains) return byContains;
+
+  // 3. Display order fallback if provided
+  if (displayOrder !== undefined) {
+    const byOrder = floors.find((f) => f.display_order === displayOrder);
+    if (byOrder) return byOrder;
+  }
+
+  return undefined;
+}
+
+export async function autoCreateMissingRoomsAndFloors(
+  items: MissingClassroomInfo[] | string[]
+): Promise<{ createdFloors: Floor[]; createdRooms: Classroom[] }> {
+  const normalizedItems: Array<{ room_number: string; floor_name: string }> = [];
+
+  for (const it of items) {
+    if (typeof it === 'string') {
+      const roomNum = it.trim().toUpperCase();
+      if (roomNum) {
+        normalizedItems.push({ room_number: roomNum, floor_name: 'Main Floor' });
+      }
+    } else if (it && it.room_number) {
+      const roomNum = it.room_number.trim().toUpperCase();
+      const floorName = it.floor_name ? it.floor_name.trim() : 'Main Floor';
+      if (roomNum) {
+        normalizedItems.push({ room_number: roomNum, floor_name: floorName });
+      }
+    }
+  }
+
+  if (normalizedItems.length === 0) {
+    return { createdFloors: [], createdRooms: [] };
+  }
+
+  // Get current state
+  let currentFloors = await getFloors();
+  const currentClassrooms = await getClassrooms();
+  const existingRoomMap = new Map(
+    currentClassrooms.map((c) => [c.room_number.trim().toUpperCase(), c])
+  );
+
+  const missingItems = normalizedItems.filter((it) => !existingRoomMap.has(it.room_number));
+  if (missingItems.length === 0) {
+    return { createdFloors: [], createdRooms: [] };
+  }
+
+  const createdFloors: Floor[] = [];
+  const createdRooms: Classroom[] = [];
+
+  // Group rooms strictly by their explicit floor_name (no prefix digit guessing)
+  const floorGroupMap = new Map<string, { floorName: string; rooms: string[] }>();
+
+  for (const it of missingItems) {
+    const key = it.floor_name.toLowerCase();
+    if (!floorGroupMap.has(key)) {
+      floorGroupMap.set(key, { floorName: it.floor_name, rooms: [] });
+    }
+    const group = floorGroupMap.get(key)!;
+    if (!group.rooms.includes(it.room_number)) {
+      group.rooms.push(it.room_number);
+    }
+  }
+
+  let nextDisplayOrder = currentFloors.reduce((max, f) => Math.max(max, f.display_order), 0) + 1;
+
+  for (const group of floorGroupMap.values()) {
+    // Find or create floor
+    let targetFloor = findMatchingFloor(currentFloors, group.floorName);
+
+    if (!targetFloor) {
+      try {
+        targetFloor = await createFloor(group.floorName, nextDisplayOrder++);
+        createdFloors.push(targetFloor);
+        currentFloors.push(targetFloor);
+      } catch (err: any) {
+        currentFloors = await getFloors();
+        targetFloor = findMatchingFloor(currentFloors, group.floorName);
+        if (!targetFloor && currentFloors.length > 0) {
+          targetFloor = currentFloors[0];
+        }
+      }
+    }
+
+    if (!targetFloor) {
+      console.error(`Unable to resolve floor for rooms: ${group.rooms.join(', ')}`);
+      continue;
+    }
+
+    // Create classrooms for this floor
+    for (const roomNum of group.rooms) {
+      if (existingRoomMap.has(roomNum)) continue;
+      try {
+        const newClassroom = await createClassroom(roomNum, targetFloor.id, 40);
+        createdRooms.push(newClassroom);
+        existingRoomMap.set(roomNum, newClassroom);
+      } catch (err: any) {
+        console.warn(`Could not create classroom "${roomNum}":`, err.message);
+      }
+    }
+  }
+
+  return { createdFloors, createdRooms };
+}
+
+// --------------------------------------------------------------------------------
+// 4c. TIMETABLE PARSING HELPERS (Day, Time Range, Section Heading)
+// --------------------------------------------------------------------------------
+
+// Convert day string to integer (1 = Monday ... 6 = Saturday). Sunday is strictly disallowed.
+export function parseDayOfWeek(raw: string): { day: number | null; isSunday: boolean } {
+  const clean = raw.trim().toLowerCase();
+
+  // Strict check for Sunday
+  if (clean === '7' || clean === 'sun' || clean === 'sunday' || clean === 'su') {
+    return { day: null, isSunday: true };
+  }
+
+  if (clean === '1' || clean === 'mon' || clean === 'monday' || clean === 'mo') return { day: 1, isSunday: false };
+  if (clean === '2' || clean === 'tue' || clean === 'tues' || clean === 'tuesday' || clean === 'tu') return { day: 2, isSunday: false };
+  if (clean === '3' || clean === 'wed' || clean === 'wednesday' || clean === 'we') return { day: 3, isSunday: false };
+  if (clean === '4' || clean === 'thu' || clean === 'thur' || clean === 'thurs' || clean === 'thursday' || clean === 'th') return { day: 4, isSunday: false };
+  if (clean === '5' || clean === 'fri' || clean === 'friday' || clean === 'fr') return { day: 5, isSunday: false };
+  if (clean === '6' || clean === 'sat' || clean === 'saturday' || clean === 'sa') return { day: 6, isSunday: false };
+
+  return { day: null, isSunday: false };
+}
+
+export function parseSingleTime(raw: string, fallbackPeriod?: 'AM' | 'PM'): string | null {
+  if (!raw) return null;
+  const clean = raw.trim().toUpperCase();
+  const match = clean.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/);
+  if (!match) return null;
+
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2] ? parseInt(match[2], 10) : 0;
+  const period = (match[3] as 'AM' | 'PM' | undefined) || fallbackPeriod;
+
+  if (minutes < 0 || minutes > 59) return null;
+
+  if (period === 'PM') {
+    if (hours < 12) hours += 12;
+  } else if (period === 'AM') {
+    if (hours === 12) hours = 0;
+  }
+
+  if (hours < 0 || hours > 23) return null;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
+export function parseTimeRange(timeStr: string): { start: string; end: string } | null {
+  if (!timeStr) return null;
+  const clean = timeStr.trim();
+  // Split on hyphen, en-dash, em-dash, 'to', 'till', '/'
+  const parts = clean.split(/\s*(?:-|–|—|\bto\b|\btill\b|\/)\s*/i);
+  if (parts.length !== 2) return null;
+
+  const startPart = parts[0].trim();
+  const endPart = parts[1].trim();
+
+  const startHasAmPm = /(AM|PM)/i.test(startPart);
+  const endHasAmPm = /(AM|PM)/i.test(endPart);
+
+  let startParsed: string | null = null;
+  let endParsed: string | null = null;
+
+  if (startHasAmPm && endHasAmPm) {
+    startParsed = parseSingleTime(startPart);
+    endParsed = parseSingleTime(endPart);
+  } else if (!startHasAmPm && endHasAmPm) {
+    const endPeriodMatch = endPart.toUpperCase().match(/(AM|PM)/);
+    const endPeriod = endPeriodMatch ? (endPeriodMatch[1] as 'AM' | 'PM') : undefined;
+    endParsed = parseSingleTime(endPart);
+
+    const rawStartHourMatch = startPart.match(/^(\d{1,2})/);
+    const rawEndHourMatch = endPart.match(/^(\d{1,2})/);
+    let startPeriod = endPeriod;
+    if (endPeriod === 'PM' && rawStartHourMatch && rawEndHourMatch) {
+      const sH = parseInt(rawStartHourMatch[1], 10);
+      const eH = parseInt(rawEndHourMatch[1], 10);
+      if (sH > eH && sH !== 12) {
+        startPeriod = 'AM';
+      }
+    }
+    startParsed = parseSingleTime(startPart, startPeriod);
+  } else if (startHasAmPm && !endHasAmPm) {
+    const startPeriodMatch = startPart.toUpperCase().match(/(AM|PM)/);
+    const startPeriod = startPeriodMatch ? (startPeriodMatch[1] as 'AM' | 'PM') : undefined;
+    startParsed = parseSingleTime(startPart);
+    endParsed = parseSingleTime(endPart, startPeriod);
+  } else {
+    startParsed = parseSingleTime(startPart);
+    endParsed = parseSingleTime(endPart);
+  }
+
+  if (!startParsed || !endParsed) return null;
+  return { start: startParsed, end: endParsed };
+}
+
+export function extractTopHeadingSection(lines: string[], headerIdx: number): string | null {
+  for (let i = 0; i < headerIdx; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // Matches "Section: BCA A", "Class/Section - BCA B", "Section = BCA A"
+    const secMatch = line.match(/(?:section|sec|batch|class)\s*[:=-]\s*([^,;\n\r]+)/i);
+    if (secMatch && secMatch[1].trim()) {
+      return secMatch[1].trim();
+    }
+
+    // Matches standalone header cell like "BCA A", "BCA-A", "BCA 1st Year Sec A"
+    const firstCell = line.split(',')[0].trim();
+    if (firstCell && !firstCell.toLowerCase().includes('day') && !firstCell.toLowerCase().includes('room')) {
+      const cleaned = firstCell.replace(/^[#*-]\s*/, '').trim();
+      if (cleaned.length >= 2 && cleaned.length <= 40) {
+        return cleaned;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Checks whether a given calendar date and start time slot has already passed in the user's local time.
+ * Includes a 60-second grace window to account for network transmission latency.
+ */
+export function isSlotInPast(dateStr: string, startTimeStr: string): boolean {
+  if (!dateStr || !startTimeStr) return false;
+  let datePart = dateStr;
+  let timePart = startTimeStr;
+  if (dateStr.includes('T')) {
+    const parts = dateStr.split('T');
+    datePart = parts[0];
+    timePart = parts[1].substring(0, 5);
+  }
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = timePart.substring(0, 5).split(':').map(Number);
+  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) return false;
+
+  const slotDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+  const now = new Date();
+  return slotDate.getTime() < now.getTime() - 60000;
+}
+
 
 // --------------------------------------------------------------------------------
 // 5. TIMETABLE MANAGEMENT & CONFLICT DETECTION
@@ -862,7 +1191,58 @@ export async function getTimetableEvents(): Promise<TimetableEvent[]> {
       .select('*, classroom:classrooms(*, floor:floors(*))')
       .order('day_of_week')
       .order('start_time');
-    if (!error && data) return data as TimetableEvent[];
+
+    if (!error && data) {
+      if (data.length > 0) {
+        return data as TimetableEvent[];
+      }
+
+      // If Supabase returned 0 events, check if local storage has events (e.g. from an earlier import)
+      // and automatically sync them to Supabase so previously imported events are not lost
+      const localEvents = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
+      if (localEvents.length > 0) {
+        const classrooms = await getClassrooms();
+        const validRoomIds = new Set(classrooms.map((c) => c.id));
+        const syncPayload = localEvents
+          .filter((e) => validRoomIds.has(e.classroom_id))
+          .map((e) => ({
+            classroom_id: e.classroom_id,
+            subject: e.subject.trim(),
+            faculty_name: e.faculty_name.trim(),
+            day_of_week: e.day_of_week,
+            start_time: e.start_time.trim().length === 5 ? `${e.start_time.trim()}:00` : e.start_time.trim(),
+            end_time: e.end_time.trim().length === 5 ? `${e.end_time.trim()}:00` : e.end_time.trim(),
+            semester: e.semester?.trim() || 'Current Semester',
+            specific_date: e.specific_date || null,
+            is_active: e.is_active ?? true,
+          }));
+
+        if (syncPayload.length > 0) {
+          try {
+            const { data: synced, error: syncErr } = await supabase
+              .from('timetable_events')
+              .insert(syncPayload)
+              .select('*, classroom:classrooms(*, floor:floors(*))');
+            if (!syncErr && synced && synced.length > 0) {
+              return synced as TimetableEvent[];
+            }
+          } catch (syncErr) {
+            console.warn('Auto-sync local timetable to Supabase error:', syncErr);
+          }
+        }
+
+        // Return local events as fallback with classrooms attached
+        const roomMap = new Map(classrooms.map((c) => [c.id, c]));
+        return localEvents
+          .map((e) => ({
+            ...e,
+            classroom: e.classroom || roomMap.get(e.classroom_id),
+          }))
+          .sort((a, b) => a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time));
+      }
+
+      return data as TimetableEvent[];
+    }
   }
 
   const events = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
@@ -885,15 +1265,10 @@ export async function detectTimetableConflictsWithReservations(
   endTime: string, // "10:30"
   specificDate?: string | null
 ): Promise<Reservation[]> {
-  const reservations = getLocal<Reservation[]>(KEYS.RESERVATIONS, []);
-  const profiles = getLocal<Profile[]>(KEYS.PROFILES, []);
-  const profileMap = new Map(profiles.map((p) => [p.id, p]));
-
+  const reservations = await getReservations({ classroomId, status: 'confirmed' });
   const conflicts: Reservation[] = [];
 
   for (const res of reservations) {
-    if (res.classroom_id !== classroomId || res.status !== 'confirmed') continue;
-
     const resStart = new Date(res.start_time);
     const resEnd = new Date(res.end_time);
 
@@ -914,13 +1289,7 @@ export async function detectTimetableConflictsWithReservations(
 
     // Overlap condition: requested_start < existing_end AND requested_end > existing_start
     if (startTime < resEndHHMM && endTime > resStartHHMM) {
-      const prof = profileMap.get(res.faculty_id);
-      conflicts.push({
-        ...res,
-        faculty: prof
-          ? { id: prof.id, username: prof.username, full_name: prof.full_name }
-          : undefined,
-      });
+      conflicts.push(res);
     }
   }
 
@@ -943,15 +1312,54 @@ export async function createTimetableEvent(
     return { conflicts };
   }
 
+  const cleanStart = event.start_time.trim().length === 5 ? `${event.start_time.trim()}:00` : event.start_time.trim();
+  const cleanEnd = event.end_time.trim().length === 5 ? `${event.end_time.trim()}:00` : event.end_time.trim();
+
+  // Local storage cache update
   const events = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
   const newEvent: TimetableEvent = {
     ...event,
+    section: event.section?.trim() || undefined,
+    start_time: cleanStart,
+    end_time: cleanEnd,
     id: `tt-${Date.now()}`,
     created_at: new Date().toISOString(),
   };
-
   events.push(newEvent);
   setLocal(KEYS.TIMETABLE, events);
+
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const insertPayload: any = {
+      classroom_id: event.classroom_id,
+      subject: event.subject.trim(),
+      faculty_name: event.faculty_name.trim(),
+      day_of_week: event.day_of_week,
+      start_time: cleanStart,
+      end_time: cleanEnd,
+      semester: event.semester?.trim() || 'Current Semester',
+      specific_date: event.specific_date || null,
+      is_active: event.is_active ?? true,
+    };
+    if (event.section?.trim()) {
+      insertPayload.section = event.section.trim();
+    }
+
+    const { data, error } = await supabase
+      .from('timetable_events')
+      .insert(insertPayload)
+      .select('*, classroom:classrooms(*, floor:floors(*))')
+      .single();
+
+    if (error) {
+      console.error('Supabase create timetable event error:', error);
+      throw new Error(error.message || 'Failed to save timetable event.');
+    }
+
+    broadcastChange('timetable_events', 'INSERT', data);
+    return { event: data as TimetableEvent };
+  }
+
   broadcastChange('timetable_events', 'INSERT', newEvent);
   return { event: newEvent };
 }
@@ -960,29 +1368,68 @@ export async function deleteTimetableEvent(id: string): Promise<void> {
   let events = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
   events = events.filter((e) => e.id !== id);
   setLocal(KEYS.TIMETABLE, events);
+
+  const config = getSupabaseConfigStatus();
+  if (config.isConfigured) {
+    const { error } = await supabase.from('timetable_events').delete().eq('id', id);
+    if (error) {
+      console.error('Supabase delete timetable event error:', error);
+      throw new Error(error.message || 'Failed to delete timetable event.');
+    }
+  }
+
   broadcastChange('timetable_events', 'DELETE', { id });
 }
 
 export async function parseAndValidateTimetableImport(
   rawText: string
-): Promise<{ rows: TimetableImportRow[]; validCount: number; errorCount: number }> {
+): Promise<{
+  rows: TimetableImportRow[];
+  validCount: number;
+  errorCount: number;
+  missingClassrooms: MissingClassroomInfo[];
+  detectedSection?: string;
+}> {
   const lines = rawText.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) {
     throw new Error('Timetable file must contain a header row and at least one data row.');
   }
 
-  const header = lines[0].toLowerCase().split(',').map((h) => h.trim());
-  const roomIdx = header.findIndex((h) => h.includes('room'));
-  const subjectIdx = header.findIndex((h) => h.includes('subject') || h.includes('course'));
-  const facultyIdx = header.findIndex((h) => h.includes('faculty') || h.includes('teacher') || h.includes('prof'));
+  // 1. Locate the column header row (which contains "day" and ("room" or "subject" or "time"))
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const lower = lines[i].toLowerCase();
+    if (lower.includes('day') && (lower.includes('room') || lower.includes('subject') || lower.includes('time') || lower.includes('floor'))) {
+      headerIdx = i;
+      break;
+    }
+  }
+
+  if (headerIdx === -1) {
+    // Fallback to first line if no clear match
+    headerIdx = 0;
+  }
+
+  // 2. Extract section heading if specified at the top of the file before headers
+  const topSection = extractTopHeadingSection(lines, headerIdx) || undefined;
+
+  const header = lines[headerIdx].toLowerCase().split(',').map((h) => h.trim());
   const dayIdx = header.findIndex((h) => h.includes('day'));
+  const timeIdx = header.findIndex(
+    (h) => h === 'time' || h === 'timeslot' || h.includes('time slot') || h === 'slot' || (h.includes('time') && !h.includes('start') && !h.includes('end'))
+  );
   const startIdx = header.findIndex((h) => h.includes('start'));
   const endIdx = header.findIndex((h) => h.includes('end'));
-  const semesterIdx = header.findIndex((h) => h.includes('semester'));
+  const roomIdx = header.findIndex((h) => h.includes('room') || h.includes('classroom'));
+  const floorIdx = header.findIndex((h) => h.includes('floor') || h.includes('level'));
+  const subjectIdx = header.findIndex((h) => h.includes('subject') || h.includes('course'));
+  const facultyIdx = header.findIndex((h) => h.includes('faculty') || h.includes('teacher') || h.includes('prof') || h.includes('instructor'));
+  const sectionIdx = header.findIndex((h) => h === 'section' || h === 'sec' || h.includes('section') || h === 'class');
+  const semesterIdx = header.findIndex((h) => h.includes('semester') || h.includes('term'));
 
-  if (roomIdx === -1 || subjectIdx === -1 || facultyIdx === -1 || dayIdx === -1 || startIdx === -1 || endIdx === -1) {
+  if (dayIdx === -1 || roomIdx === -1 || subjectIdx === -1 || facultyIdx === -1 || (timeIdx === -1 && (startIdx === -1 || endIdx === -1))) {
     throw new Error(
-      'Missing required columns. Expected header columns: Room Number, Subject, Faculty, Day (1-7), Start Time (HH:mm), End Time (HH:mm)'
+      'Missing required columns. Expected header: Day (Mon-Sat), Time (e.g. 09:00 AM - 10:30 AM), Room, Floor, Subject, Faculty (and optional Section)'
     );
   }
 
@@ -990,43 +1437,71 @@ export async function parseAndValidateTimetableImport(
   const roomNumberMap = new Map(classrooms.map((c) => [c.room_number.toUpperCase(), c]));
 
   const rows: TimetableImportRow[] = [];
+  const missingClassroomsMap = new Map<string, string>();
   let validCount = 0;
   let errorCount = 0;
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = headerIdx + 1; i < lines.length; i++) {
     const cols = lines[i].split(',').map((c) => c.trim());
-    if (cols.length < 6) continue;
+    if (cols.length < 3 || cols.every((c) => !c)) continue;
 
+    const dayRaw = cols[dayIdx] || '';
     const roomNum = cols[roomIdx]?.toUpperCase() || '';
+    const floorName = floorIdx !== -1 && cols[floorIdx] ? cols[floorIdx] : '';
     const subject = cols[subjectIdx] || '';
     const faculty = cols[facultyIdx] || '';
-    const dayVal = parseInt(cols[dayIdx], 10);
-    const start = cols[startIdx] || '';
-    const end = cols[endIdx] || '';
-    const semester = semesterIdx !== -1 ? cols[semesterIdx] : 'Current Semester';
+    const rowSection = (sectionIdx !== -1 && cols[sectionIdx] ? cols[sectionIdx] : '') || topSection || '';
+    const semester = semesterIdx !== -1 && cols[semesterIdx] ? cols[semesterIdx] : 'Current Semester';
+
+    // Parse time range
+    let start = '';
+    let end = '';
+
+    if (timeIdx !== -1 && cols[timeIdx]) {
+      const parsedRange = parseTimeRange(cols[timeIdx]);
+      if (parsedRange) {
+        start = parsedRange.start;
+        end = parsedRange.end;
+      }
+    } else if (startIdx !== -1 && endIdx !== -1) {
+      start = parseSingleTime(cols[startIdx]) || cols[startIdx];
+      end = parseSingleTime(cols[endIdx]) || cols[endIdx];
+    }
+
+    // Parse day of week (strictly Monday through Saturday, Sunday disallowed)
+    const { day: dayVal, isSunday } = parseDayOfWeek(dayRaw);
 
     const row: TimetableImportRow = {
       room_number: roomNum,
+      floor_name: floorName || undefined,
       subject,
       faculty_name: faculty,
-      day_of_week: dayVal,
+      day_of_week: dayVal || 0,
       start_time: start,
       end_time: end,
+      section: rowSection || undefined,
       semester,
     };
 
-    if (!roomNumberMap.has(roomNum)) {
-      row.error = `Classroom "${roomNum}" does not exist in the database.`;
+    if (isSunday) {
+      row.error = 'Sunday is not permitted. Timetable events are restricted to Monday through Saturday only.';
       errorCount++;
-    } else if (isNaN(dayVal) || dayVal < 1 || dayVal > 7) {
-      row.error = `Invalid Day of Week "${cols[dayIdx]}". Must be an integer between 1 (Monday) and 7 (Sunday).`;
+    } else if (dayVal === null) {
+      row.error = `Invalid Day of Week "${dayRaw}". Must be a valid day from Monday to Saturday (e.g. Monday, Mon).`;
       errorCount++;
-    } else if (!/^\d{2}:\d{2}/.test(start) || !/^\d{2}:\d{2}/.test(end)) {
-      row.error = `Invalid Time Format. Expected HH:mm (24-hour format).`;
+    } else if (!start || !end) {
+      const timeSample = timeIdx !== -1 ? cols[timeIdx] : `${cols[startIdx]} - ${cols[endIdx]}`;
+      row.error = `Invalid Time Format "${timeSample}". Expected format like "09:00 AM - 10:30 AM" or "09:00 - 10:30".`;
       errorCount++;
     } else if (end <= start) {
       row.error = `End time (${end}) must be strictly after start time (${start}).`;
       errorCount++;
+    } else if (!roomNumberMap.has(roomNum)) {
+      row.error = `Classroom "${roomNum}" on ${floorName || 'specified floor'} does not exist in the database.`;
+      errorCount++;
+      if (roomNum) {
+        missingClassroomsMap.set(roomNum, floorName || 'Main Floor');
+      }
     } else {
       const room = roomNumberMap.get(roomNum)!;
       const conflicts = await detectTimetableConflictsWithReservations(
@@ -1048,36 +1523,94 @@ export async function parseAndValidateTimetableImport(
     rows.push(row);
   }
 
-  return { rows, validCount, errorCount };
+  const missingClassrooms: MissingClassroomInfo[] = Array.from(missingClassroomsMap.entries()).map(
+    ([room_number, floor_name]) => ({ room_number, floor_name })
+  ).sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
+
+  return { rows, validCount, errorCount, missingClassrooms, detectedSection: topSection };
 }
 
 export async function commitTimetableImport(rows: TimetableImportRow[]): Promise<number> {
   const classrooms = await getClassrooms();
-  const roomMap = new Map(classrooms.map((c) => [c.room_number.toUpperCase(), c]));
-  const events = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
+  const roomMap = new Map(classrooms.map((c) => [c.room_number.trim().toUpperCase(), c]));
+  const config = getSupabaseConfigStatus();
 
-  let committed = 0;
+  const toInsert: Array<{
+    classroom_id: string;
+    subject: string;
+    faculty_name: string;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    semester: string;
+    section?: string;
+    is_active: boolean;
+  }> = [];
+
   for (const row of rows) {
     if (row.error) continue; // Skip invalid rows
-    const room = roomMap.get(row.room_number);
+    const cleanRoom = row.room_number.trim().toUpperCase();
+    const room = roomMap.get(cleanRoom);
     if (!room) continue;
 
+    const insertItem: {
+      classroom_id: string;
+      subject: string;
+      faculty_name: string;
+      day_of_week: number;
+      start_time: string;
+      end_time: string;
+      semester: string;
+      section?: string;
+      is_active: boolean;
+    } = {
+      classroom_id: room.id,
+      subject: row.subject.trim(),
+      faculty_name: row.faculty_name.trim(),
+      day_of_week: row.day_of_week,
+      start_time: row.start_time.trim().length === 5 ? `${row.start_time.trim()}:00` : row.start_time.trim(),
+      end_time: row.end_time.trim().length === 5 ? `${row.end_time.trim()}:00` : row.end_time.trim(),
+      semester: row.semester?.trim() || 'Current Semester',
+      is_active: true,
+    };
+
+    if (row.section?.trim()) {
+      insertItem.section = row.section.trim();
+    }
+
+    toInsert.push(insertItem);
+  }
+
+  if (toInsert.length === 0) return 0;
+
+  // Always keep localStorage updated as local cache and fallback
+  const events = getLocal<TimetableEvent[]>(KEYS.TIMETABLE, []);
+  let committed = 0;
+  for (const item of toInsert) {
     events.push({
       id: `tt-${Date.now()}-${committed}`,
-      classroom_id: room.id,
-      subject: row.subject,
-      faculty_name: row.faculty_name,
-      day_of_week: row.day_of_week,
-      start_time: row.start_time,
-      end_time: row.end_time,
-      semester: row.semester || 'Current Semester',
-      is_active: true,
+      ...item,
       created_at: new Date().toISOString(),
     });
     committed++;
   }
-
   setLocal(KEYS.TIMETABLE, events);
+
+  if (config.isConfigured) {
+    const { data, error } = await supabase
+      .from('timetable_events')
+      .insert(toInsert)
+      .select('*, classroom:classrooms(*, floor:floors(*))');
+
+    if (error) {
+      console.error('Failed to commit timetable import to Supabase:', error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    broadcastChange('timetable_events', 'INSERT_BATCH', { count: data?.length || toInsert.length });
+    return data?.length || toInsert.length;
+  }
+
   broadcastChange('timetable_events', 'INSERT_BATCH', { count: committed });
   return committed;
 }
@@ -1191,7 +1724,7 @@ export async function checkClassroomAvailability(
     };
   }
 
-  return { available: true, reason: 'Classroom is available for booking.' };
+  return { available: true, reason: 'Classroom is available for schedule.' };
 }
 
 // --------------------------------------------------------------------------------
@@ -1205,6 +1738,12 @@ export async function reserveClassroom(
   purpose: string,
   facultyId: string
 ): Promise<Reservation> {
+  // 1. Strictly block reservations in the past
+  const [datePart, timePart] = startDateTime.split('T');
+  if (datePart && timePart && isSlotInPast(datePart, timePart)) {
+    throw new Error('Cannot book a classroom for a past date or time. Please select a future time slot.');
+  }
+
   const config = getSupabaseConfigStatus();
   if (config.isConfigured) {
     const { data, error } = await supabase.rpc('reserve_classroom', {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, X, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
+import { PasswordInput } from './PasswordInput';
 
 interface PasswordChangeModalProps {
   isForced?: boolean;
@@ -108,35 +109,42 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({
           {!isForced && (
             <div style={{ marginBottom: '14px' }}>
               <label>Current Password *</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter current password"
                 required
+                minLength={6}
+                maxLength={64}
+                autoComplete="current-password"
               />
             </div>
           )}
 
           <div style={{ marginBottom: '14px' }}>
             <label>New Password * (Min 8 characters)</label>
-            <input
-              type="password"
+            <PasswordInput
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
+              placeholder="Enter new password (min 8 characters)"
               required
+              minLength={8}
+              maxLength={64}
+              autoComplete="new-password"
             />
+            <div className="form-helper">At least 8 characters (alphanumeric or symbols)</div>
           </div>
 
           <div style={{ marginBottom: '20px' }}>
             <label>Confirm New Password *</label>
-            <input
-              type="password"
+            <PasswordInput
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
+              placeholder="Re-enter new password"
               required
+              minLength={8}
+              maxLength={64}
+              autoComplete="new-password"
             />
           </div>
 

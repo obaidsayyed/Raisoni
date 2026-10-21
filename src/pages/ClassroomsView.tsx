@@ -5,10 +5,11 @@ import {
   getFloors,
   checkClassroomAvailability,
   subscribeToRealtimeChanges,
+  isSlotInPast,
 } from '../services/storageEngine';
 import { RoomCard } from '../components/RoomCard';
 import { RoomFilterBar } from '../components/RoomFilterBar';
-import { BookingModal } from '../components/BookingModal';
+import { ScheduleModal } from '../components/BookingModal';
 import { useAuth } from '../context/AuthContext';
 import { Building2, AlertCircle } from 'lucide-react';
 
@@ -23,16 +24,23 @@ export const ClassroomsView: React.FC<ClassroomsViewProps> = ({ onOpenLogin }) =
   const [availabilities, setAvailabilities] = useState<Record<string, AvailabilityResult>>({});
   const [loading, setLoading] = useState(true);
 
+  // Local calendar date formatted YYYY-MM-DD
+  const getTodayDateString = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   // Filter States
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [selectedDate, setSelectedDate] = useState(getTodayDateString());
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:30');
   const [selectedFloorId, setSelectedFloorId] = useState('');
   const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'available' | 'occupied' | 'reserved'>('all');
 
-  // Booking Modal State
-  const [bookingRoom, setBookingRoom] = useState<Classroom | null>(null);
+  const isPastSlot = isSlotInPast(selectedDate, startTime);
+
+  // Schedule Modal State
+  const [scheduleRoom, setScheduleRoom] = useState<Classroom | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -71,11 +79,14 @@ export const ClassroomsView: React.FC<ClassroomsViewProps> = ({ onOpenLogin }) =
 
   // Handle reserve click
   const handleReserveClick = (classroom: Classroom) => {
+    if (isPastSlot) {
+      return;
+    }
     if (role === 'reader') {
       onOpenLogin();
       return;
     }
-    setBookingRoom(classroom);
+    setScheduleRoom(classroom);
   };
 
   // Compute stats
@@ -104,7 +115,7 @@ export const ClassroomsView: React.FC<ClassroomsViewProps> = ({ onOpenLogin }) =
   });
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="page-container">
       {/* Title Section */}
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '0.5px' }}>
@@ -122,7 +133,7 @@ export const ClassroomsView: React.FC<ClassroomsViewProps> = ({ onOpenLogin }) =
           <div>
             <div style={{ fontWeight: 700 }}>Reader Mode Active</div>
             <div style={{ fontSize: '13px' }}>
-              You are viewing real-time classroom schedules publicly. Sign in with faculty or admin credentials to make bookings.
+              You are viewing real-time classroom schedules publicly. Sign in with faculty or admin credentials to schedule classrooms.
             </div>
           </div>
         </div>
@@ -162,9 +173,10 @@ export const ClassroomsView: React.FC<ClassroomsViewProps> = ({ onOpenLogin }) =
         </div>
       ) : (
         <div
+          className="room-cards-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
             gap: '20px',
           }}
         >
@@ -177,19 +189,20 @@ export const ClassroomsView: React.FC<ClassroomsViewProps> = ({ onOpenLogin }) =
               }
               onReserve={handleReserveClick}
               isReaderMode={role === 'reader'}
+              isPastSlot={isPastSlot}
             />
           ))}
         </div>
       )}
 
-      {/* Booking Modal */}
-      {bookingRoom && (
-        <BookingModal
-          classroom={bookingRoom}
+      {/* Schedule Modal */}
+      {scheduleRoom && (
+        <ScheduleModal
+          classroom={scheduleRoom}
           date={selectedDate}
           startTime={startTime}
           endTime={endTime}
-          onClose={() => setBookingRoom(null)}
+          onClose={() => setScheduleRoom(null)}
           onSuccess={loadData}
         />
       )}
